@@ -1,0 +1,39 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  <div class="form-row">
+    <div class="field">
+      <label for="flightNumber">Flight Number</label>
+      <input
+        id="flightNumber"
+        type="text"
+        formControlName="flightNumber"
+        placeholder="e.g. BA123"
+        autocomplete="off"
+        [class.invalid]="flightNumber.invalid && flightNumber.touched"
+      />
+      <span class="error" *ngIf="flightNumber.touched && flightNumber.hasError('required')">
+        Flight number is required.
+      </span>
+      <span class="error" *ngIf="flightNumber.touched && flightNumber.hasError('pattern')">
+        Enter a valid flight number (e.g. BA123).
+      </span>
+    </div>
+
+    <div class="field">
+      <label for="date">Date</label>
+      <input
+        id="date"
+        type="date"
+        formControlName="date"
+        [class.invalid]="date.invalid && date.touched"
+      />
+      <span class="error" *ngIf="date.touched && date.hasError('required')">
+        Date is required.
+      </span>
+    </div>
+
+    <button type="submit" [disabled]="loading">
+      <span *ngIf="loading" class="spinner"></span>
+      {{ loading ? 'Searching…' : 'Search' }}
+    </button>
+  </div>
+</form>

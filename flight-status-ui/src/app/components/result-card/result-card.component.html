@@ -1,0 +1,56 @@
+<div class="result-card" [ngClass]="statusClass">
+  <div class="card-header">
+    <span class="flight-number">{{ result.flightNumber }}</span>
+    <span class="status-badge" [ngClass]="statusClass">{{ statusLabel }}</span>
+  </div>
+
+  <div class="card-body">
+    <div class="detail-row">
+      <span class="label">Date</span>
+      <span class="value">{{ result.date }}</span>
+    </div>
+
+    <ng-container *ngIf="result.status !== 'Unknown'; else unknownBlock">
+      <div class="detail-row" *ngIf="result.scheduledDeparture">
+        <span class="label">Scheduled Departure</span>
+        <span class="value">{{ formatDateTime(result.scheduledDeparture) }}</span>
+      </div>
+      <div class="detail-row" *ngIf="result.actualDeparture">
+        <span class="label">Actual Departure</span>
+        <span class="value">{{ formatDateTime(result.actualDeparture) }}</span>
+      </div>
+      <div class="detail-row" *ngIf="result.scheduledArrival">
+        <span class="label">Scheduled Arrival</span>
+        <span class="value">{{ formatDateTime(result.scheduledArrival) }}</span>
+      </div>
+      <div class="detail-row" *ngIf="result.actualArrival">
+        <span class="label">Actual Arrival</span>
+        <span class="value">{{ formatDateTime(result.actualArrival) }}</span>
+      </div>
+      <div class="detail-row" *ngIf="result.terminal">
+        <span class="label">Terminal</span>
+        <span class="value">{{ result.terminal }}</span>
+      </div>
+      <div class="detail-row" *ngIf="result.gate">
+        <span class="label">Gate</span>
+        <span class="value">{{ result.gate }}</span>
+      </div>
+      <div class="detail-row" *ngIf="result.delayReason">
+        <span class="label">Delay Reason</span>
+        <span class="value delay-reason">{{ result.delayReason }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">Last Updated</span>
+        <span class="value">{{ formatDateTime(result.lastUpdatedUtc) }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="label">Source</span>
+        <span class="value">{{ result.sourceProvider }}</span>
+      </div>
+    </ng-container>
+
+    <ng-template #unknownBlock>
+      <p class="unknown-message">{{ result.message || 'No flight data available.' }}</p>
+    </ng-template>
+  </div>
+</div>
