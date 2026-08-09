@@ -1,11 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using FlightStatus.Api.Configuration;
+using FlightStatus.Api.Controllers;
 using FlightStatus.Api.Data;
 using FlightStatus.Api.Data.Entities;
 using FlightStatus.Api.Data.Repositories;
-using FlightStatus.Api.Endpoints;
 using FlightStatus.Api.Providers;
 using FlightStatus.Api.Services;
 using FlightStatus.Api.Services.Interfaces;
@@ -33,7 +32,7 @@ public static class ServiceRegistration
         services.AddIdentityAndAuth(config);
         services.AddRepositories();
         services.AddApplicationServices();
-        services.AddEndpointDefinitions();
+        services.AddControllerDefinitions();
 
         services.AddMemoryCache();
         services.AddOpenApi();
@@ -118,16 +117,16 @@ public static class ServiceRegistration
         services.AddScoped<IBookingService,            BookingService>();
     }
 
-    // Auto-discovers all IEndpointDefinition implementations in this assembly
-    private static void AddEndpointDefinitions(this IServiceCollection services)
+    // Auto-discovers all IController implementations in the Controllers assembly
+    private static void AddControllerDefinitions(this IServiceCollection services)
     {
-        var definitions = typeof(IEndpointDefinition).Assembly
+        var controllers = typeof(IController).Assembly
             .ExportedTypes
-            .Where(t => typeof(IEndpointDefinition).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
+            .Where(t => typeof(IController).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
             .Select(Activator.CreateInstance)
-            .Cast<IEndpointDefinition>()
+            .Cast<IController>()
             .ToList();
 
-        services.AddSingleton<IReadOnlyCollection<IEndpointDefinition>>(definitions);
+        services.AddSingleton<IReadOnlyCollection<IController>>(controllers);
     }
 }

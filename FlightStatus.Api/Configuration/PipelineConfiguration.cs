@@ -1,4 +1,4 @@
-using FlightStatus.Api.Endpoints;
+using FlightStatus.Api.Controllers;
 
 namespace FlightStatus.Api.Configuration;
 
@@ -13,16 +13,16 @@ public static class PipelineConfiguration
         app.UseAuthentication();
         app.UseAuthorization();
 
-        app.UseEndpointDefinitions();
+        app.UseControllers();
 
         return app;
     }
 
-    // Resolves all IEndpointDefinition instances from DI and calls RegisterEndpoints on each
-    private static void UseEndpointDefinitions(this WebApplication app)
+    // Resolves all IController instances from DI and calls RegisterRoutes on each
+    private static void UseControllers(this WebApplication app)
     {
-        var definitions = app.Services.GetRequiredService<IReadOnlyCollection<IEndpointDefinition>>();
-        foreach (var definition in definitions)
-            definition.RegisterEndpoints(app);
+        var controllers = app.Services.GetRequiredService<IReadOnlyCollection<IController>>();
+        foreach (var controller in controllers)
+            controller.RegisterRoutes(app);
     }
 }
