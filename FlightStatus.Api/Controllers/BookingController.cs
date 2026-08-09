@@ -4,7 +4,7 @@ using FlightStatus.Api.Services.Interfaces;
 
 namespace FlightStatus.Api.Controllers;
 
-public sealed class BookingController : IController
+public sealed class BookingController(ILogger<BookingController> logger) : IController
 {
     public void RegisterRoutes(IEndpointRouteBuilder app)
     {
@@ -16,6 +16,9 @@ public sealed class BookingController : IController
         {
             var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null) return Results.Unauthorized();
+
+            logger.LogInformation("Booking {FlightNumber} for user {UserId}", req.FlightNumber, userId);
+
             var booking = await svc.BookAsync(userId, req, ct);
             return Results.Created($"{Routes.Bookings.Create}/{booking.Id}", booking);
         })
@@ -28,12 +31,17 @@ public sealed class BookingController : IController
         {
             var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null) return Results.Unauthorized();
+
+            logger.LogInformation("My bookings requested by user {UserId}", userId);
             return Results.Ok(await svc.GetMyBookingsAsync(userId, ct));
         })
         .RequireAuthorization();
 
         app.MapGet(Routes.Bookings.AdminAll, async (IBookingService svc, CancellationToken ct) =>
-            Results.Ok(await svc.GetAllBookingsAsync(ct)))
+        {
+            logger.LogInformation("Admin: all bookings requested");
+            return Results.Ok(await svc.GetAllBookingsAsync(ct));
+        })
         .RequireAuthorization(p => p.RequireRole("Admin"));
     }
 }

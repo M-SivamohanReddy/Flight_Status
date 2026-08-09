@@ -6,6 +6,9 @@ public static class PipelineConfiguration
 {
     public static WebApplication UseFlightStatusPipeline(this WebApplication app)
     {
+        // GlobalExceptionHandler is the single reusable try-catch for all endpoints
+        app.UseExceptionHandler();
+
         if (app.Environment.IsDevelopment())
             app.MapOpenApi();
 
@@ -18,10 +21,10 @@ public static class PipelineConfiguration
         return app;
     }
 
-    // Resolves all IController instances from DI and calls RegisterRoutes on each
+    // Resolves all IController instances registered in DI and calls RegisterRoutes on each
     private static void UseControllers(this WebApplication app)
     {
-        var controllers = app.Services.GetRequiredService<IReadOnlyCollection<IController>>();
+        var controllers = app.Services.GetServices<IController>();
         foreach (var controller in controllers)
             controller.RegisterRoutes(app);
     }

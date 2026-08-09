@@ -5,6 +5,7 @@ using FlightStatus.Api.Controllers;
 using FlightStatus.Api.Data;
 using FlightStatus.Api.Data.Entities;
 using FlightStatus.Api.Data.Repositories;
+using FlightStatus.Api.Infrastructure;
 using FlightStatus.Api.Providers;
 using FlightStatus.Api.Services;
 using FlightStatus.Api.Services.Interfaces;
@@ -34,6 +35,8 @@ public static class ServiceRegistration
         services.AddApplicationServices();
         services.AddControllerDefinitions();
 
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
         services.AddMemoryCache();
         services.AddOpenApi();
         services.AddCors(opts =>
@@ -117,16 +120,11 @@ public static class ServiceRegistration
         services.AddScoped<IBookingService,            BookingService>();
     }
 
-    // Auto-discovers all IController implementations in the Controllers assembly
+    // Each controller registered explicitly so ILogger<T> is injected via DI rather than Activator.CreateInstance
     private static void AddControllerDefinitions(this IServiceCollection services)
     {
-        var controllers = typeof(IController).Assembly
-            .ExportedTypes
-            .Where(t => typeof(IController).IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
-            .Select(Activator.CreateInstance)
-            .Cast<IController>()
-            .ToList();
-
-        services.AddSingleton<IReadOnlyCollection<IController>>(controllers);
+        services.AddSingleton<IController, AuthController>();
+        services.AddSingleton<IController, FlightController>();
+        services.AddSingleton<IController, BookingController>();
     }
 }
