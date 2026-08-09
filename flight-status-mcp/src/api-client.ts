@@ -32,4 +32,17 @@ export class SkyRouteApiClient {
     }
     return res.json() as Promise<FlightStatus>;
   }
+
+  // Client-side filter — no separate backend endpoint needed
+  async searchFlightsByRoute(query: string): Promise<FlightInfo[]> {
+    const all = await this.getFlights();
+    const q   = query.toLowerCase().trim();
+    return all.filter(
+      f =>
+        f.route.toLowerCase().includes(q) ||
+        f.origin.toLowerCase().includes(q) ||
+        f.destination.toLowerCase().includes(q) ||
+        f.flightNumber.toLowerCase().includes(q)
+    );
+  }
 }

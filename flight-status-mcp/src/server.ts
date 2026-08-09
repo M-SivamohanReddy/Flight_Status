@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { SkyRouteApiClient } from './api-client.js';
 import { registerListFlights } from './tools/list-flights.js';
 import { registerCheckFlightStatus } from './tools/check-flight-status.js';
+import { registerSearchByRoute } from './tools/search-by-route.js';
 
 export const API_BASE = process.env['FLIGHT_API_URL'] ?? 'http://localhost:5000';
 
@@ -15,6 +16,7 @@ export function createServer(): McpServer {
 
   registerListFlights(server, client);
   registerCheckFlightStatus(server, client);
+  registerSearchByRoute(server, client);
 
   return server;
 }
