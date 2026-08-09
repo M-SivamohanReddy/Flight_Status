@@ -1,13 +1,13 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { AuthService } from '../../services/auth.service';
-import { BookingService } from '../../services/booking.service';
-import { FlightStatusService } from '../../services/flight-status.service';
-import { FlightInfo, FlightStatusRequest, FlightStatusResult } from '../../models/flight-status.models';
-import { BookingResponse } from '../../models/booking.models';
-import { SearchFormComponent } from '../search-form/search-form.component';
-import { ResultCardComponent } from '../result-card/result-card.component';
+import { AuthService } from '../../../services/auth.service';
+import { BookingService } from '../../../services/booking.service';
+import { FlightStatusService } from '../../../services/flight-status.service';
+import { FlightInfo, FlightStatusRequest, FlightStatusResult } from '../../../models/flight-status.models';
+import { BookingResponse } from '../../../models/booking.models';
+import { SearchFormComponent } from '../../../shared/components/search-form/search-form.component';
+import { ResultCardComponent } from '../../../shared/components/result-card/result-card.component';
 
 @Component({
   selector: 'app-user-dashboard',

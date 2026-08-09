@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { FlightInfo, FlightStatusResult } from '../../models/flight-status.models';
-import { environment } from '../../../environments/environment';
+import { FlightInfo, FlightStatusResult } from '../../../models/flight-status.models';
+import { environment } from '../../../../environments/environment';
 
 interface ChatMsg {
   id: number;

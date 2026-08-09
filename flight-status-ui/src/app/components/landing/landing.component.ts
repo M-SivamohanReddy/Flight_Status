@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FlightStatusService } from '../../services/flight-status.service';
 import { FlightStatusRequest, FlightStatusResult } from '../../models/flight-status.models';
-import { SearchFormComponent } from '../search-form/search-form.component';
-import { ResultCardComponent } from '../result-card/result-card.component';
+import { SearchFormComponent } from '../../shared/components/search-form/search-form.component';
+import { ResultCardComponent } from '../../shared/components/result-card/result-card.component';
 
 @Component({
   selector: 'app-landing',

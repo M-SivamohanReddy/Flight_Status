@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ChatbotComponent } from './components/chatbot/chatbot.component';
+import { ChatbotComponent } from './shared/components/chatbot/chatbot.component';
 
 @Component({
   selector: 'app-root',

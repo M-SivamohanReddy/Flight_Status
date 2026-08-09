@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { FlightStatusRequest } from '../../models/flight-status.models';
+import { FlightStatusRequest } from '../../../models/flight-status.models';
 
 const FLIGHT_NUMBER_PATTERN = /^[A-Za-z]{2,3}\d{1,4}$/;
 

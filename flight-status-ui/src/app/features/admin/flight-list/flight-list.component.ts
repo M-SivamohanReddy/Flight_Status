@@ -1,8 +1,8 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { FlightStatusService } from '../../services/flight-status.service';
-import { FlightInfo, FlightStatusRequest, FlightStatusResult, FlightStatus } from '../../models/flight-status.models';
+import { FlightStatusService } from '../../../services/flight-status.service';
+import { FlightInfo, FlightStatusRequest, FlightStatusResult, FlightStatus } from '../../../models/flight-status.models';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -119,7 +119,7 @@ export class FlightListComponent implements OnInit {
   }
 
   formatTime(iso: string | null | undefined): string {
-    if (!iso) return '—';
+    if (!iso) return 'ï¿½';
     return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
   }
 }

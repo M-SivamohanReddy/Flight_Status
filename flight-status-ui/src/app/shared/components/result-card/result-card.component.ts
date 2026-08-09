@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FlightStatusResult } from '../../models/flight-status.models';
+import { FlightStatusResult } from '../../../models/flight-status.models';
 
 @Component({
   selector: 'app-result-card',
@@ -58,7 +58,7 @@ export class ResultCardComponent {
 
   // kept for backward-compat if anything still calls it
   formatDateTime(iso: string | null): string {
-    if (!iso) return '—';
+    if (!iso) return 'ï¿½';
     return new Date(iso).toLocaleString(undefined, {
       dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC'
     }) + ' UTC';

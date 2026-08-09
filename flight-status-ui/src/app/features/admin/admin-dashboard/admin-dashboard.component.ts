@@ -1,13 +1,13 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../services/auth.service';
-import { BookingService } from '../../services/booking.service';
-import { FlightStatusService } from '../../services/flight-status.service';
-import { SearchFormComponent } from '../search-form/search-form.component';
-import { ResultCardComponent } from '../result-card/result-card.component';
+import { AuthService } from '../../../services/auth.service';
+import { BookingService } from '../../../services/booking.service';
+import { FlightStatusService } from '../../../services/flight-status.service';
+import { SearchFormComponent } from '../../../shared/components/search-form/search-form.component';
+import { ResultCardComponent } from '../../../shared/components/result-card/result-card.component';
 import { FlightListComponent } from '../flight-list/flight-list.component';
-import { FlightStatusRequest, FlightStatusResult } from '../../models/flight-status.models';
-import { BookingResponse } from '../../models/booking.models';
+import { FlightStatusRequest, FlightStatusResult } from '../../../models/flight-status.models';
+import { BookingResponse } from '../../../models/booking.models';
 
 @Component({
   selector: 'app-admin-dashboard',
