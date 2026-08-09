@@ -1,24 +1,24 @@
 using System.Text.RegularExpressions;
-using FlightStatus.Api.Services;
+using FlightStatus.Api.Services.Interfaces;
 
 namespace FlightStatus.Api.Endpoints;
 
-public static class FlightEndpoints
+public sealed class FlightEndpoints : IEndpointDefinition
 {
     private static readonly Regex FlightNumberPattern =
         new(@"^[A-Za-z]{2,3}\d{1,4}$", RegexOptions.Compiled);
 
-    public static IEndpointRouteBuilder MapFlightEndpoints(this IEndpointRouteBuilder app)
+    public void RegisterEndpoints(IEndpointRouteBuilder app)
     {
-        // public — catalog needed by the MCP chatbot without credentials
-        app.MapGet("/flights", async (FlightCatalogService catalog, CancellationToken ct) =>
+        // public -- catalog needed by the MCP chatbot without credentials
+        app.MapGet("/flights", async (IFlightCatalogService catalog, CancellationToken ct) =>
             Results.Ok(await catalog.GetAllAsync(ct)))
             .WithName("GetFlights");
 
-        // public — flight status is available without login
+        // public -- flight status is available without login
         app.MapGet("/flights/status", async (
             string? flightNumber, string? date,
-            FlightStatusQueryService queryService, CancellationToken ct) =>
+            IFlightStatusQueryService queryService, CancellationToken ct) =>
         {
             var errors = new Dictionary<string, string[]>();
 
@@ -43,7 +43,5 @@ public static class FlightEndpoints
             return Results.Ok(result);
         })
         .WithName("GetFlightStatus");
-
-        return app;
     }
 }

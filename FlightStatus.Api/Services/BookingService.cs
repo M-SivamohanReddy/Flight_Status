@@ -2,11 +2,13 @@ using FlightStatus.Api.Data.Entities;
 using FlightStatus.Api.Data.Repositories;
 using FlightStatus.Api.Models;
 
+using FlightStatus.Api.Services.Interfaces;
+
 namespace FlightStatus.Api.Services;
 
 public sealed class BookingService(
     IBookingRepository bookingRepository,
-    IFlightCatalogRepository catalogRepository)
+    IFlightCatalogRepository catalogRepository) : IBookingService
 {
     public async Task<BookingResponse> BookAsync(string userId, BookingRequest request, CancellationToken ct = default)
     {

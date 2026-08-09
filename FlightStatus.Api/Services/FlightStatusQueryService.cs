@@ -1,11 +1,12 @@
 using FlightStatus.Api.Models;
 using FlightStatus.Api.Providers;
+using FlightStatus.Api.Services.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace FlightStatus.Api.Services;
 
-public sealed class FlightStatusQueryService
+public sealed class FlightStatusQueryService : IFlightStatusQueryService
 {
     private readonly IEnumerable<IFlightStatusProvider> _providers;
     private readonly ILogger<FlightStatusQueryService> _logger;

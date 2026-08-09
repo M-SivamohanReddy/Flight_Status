@@ -1,16 +1,16 @@
 using System.Security.Claims;
 using FlightStatus.Api.Models;
-using FlightStatus.Api.Services;
+using FlightStatus.Api.Services.Interfaces;
 
 namespace FlightStatus.Api.Endpoints;
 
-public static class BookingEndpoints
+public sealed class BookingEndpoints : IEndpointDefinition
 {
-    public static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder app)
+    public void RegisterEndpoints(IEndpointRouteBuilder app)
     {
         app.MapPost("/bookings", async (
             BookingRequest req,
-            BookingService svc,
+            IBookingService svc,
             ClaimsPrincipal principal,
             CancellationToken ct) =>
         {
@@ -22,7 +22,7 @@ public static class BookingEndpoints
         .RequireAuthorization(p => p.RequireRole("User"));
 
         app.MapGet("/bookings/my", async (
-            BookingService svc,
+            IBookingService svc,
             ClaimsPrincipal principal,
             CancellationToken ct) =>
         {
@@ -32,10 +32,8 @@ public static class BookingEndpoints
         })
         .RequireAuthorization();
 
-        app.MapGet("/admin/bookings", async (BookingService svc, CancellationToken ct) =>
+        app.MapGet("/admin/bookings", async (IBookingService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetAllBookingsAsync(ct)))
         .RequireAuthorization(p => p.RequireRole("Admin"));
-
-        return app;
     }
 }

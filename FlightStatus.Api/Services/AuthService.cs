@@ -6,11 +6,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
+using FlightStatus.Api.Services.Interfaces;
+
 namespace FlightStatus.Api.Services;
 
 public sealed class AuthService(
     UserManager<ApplicationUser> userManager,
-    IConfiguration configuration)
+    IConfiguration configuration) : IAuthService
 {
     public async Task<IdentityResult> RegisterAsync(RegisterRequest request)
     {

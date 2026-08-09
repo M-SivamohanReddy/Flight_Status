@@ -1,9 +1,11 @@
 using FlightStatus.Api.Data.Repositories;
 using FlightStatus.Api.Models;
 
+using FlightStatus.Api.Services.Interfaces;
+
 namespace FlightStatus.Api.Services;
 
-public sealed class FlightCatalogService(IFlightCatalogRepository repository)
+public sealed class FlightCatalogService(IFlightCatalogRepository repository) : IFlightCatalogService
 {
     public async Task<IReadOnlyList<FlightInfo>> GetAllAsync(CancellationToken ct = default)
     {
