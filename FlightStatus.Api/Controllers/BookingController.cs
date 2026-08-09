@@ -1,47 +1,38 @@
 using System.Security.Claims;
 using FlightStatus.Api.Models;
 using FlightStatus.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FlightStatus.Api.Controllers;
 
-public sealed class BookingController(ILogger<BookingController> logger) : IController
+[ApiController]
+[Route("bookings")]
+[Authorize]
+public sealed class BookingController(
+    IBookingService bookingService,
+    ILogger<BookingController> logger) : ControllerBase
 {
-    public void RegisterRoutes(IEndpointRouteBuilder app)
+    [HttpPost]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> Create([FromBody] BookingRequest request, CancellationToken ct)
     {
-        app.MapPost(Routes.Bookings.Create, async (
-            BookingRequest req,
-            IBookingService svc,
-            ClaimsPrincipal principal,
-            CancellationToken ct) =>
-        {
-            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId is null) return Results.Unauthorized();
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Unauthorized();
 
-            logger.LogInformation("Booking {FlightNumber} for user {UserId}", req.FlightNumber, userId);
+        logger.LogInformation("Booking {FlightNumber} for user {UserId}", request.FlightNumber, userId);
 
-            var booking = await svc.BookAsync(userId, req, ct);
-            return Results.Created($"{Routes.Bookings.Create}/{booking.Id}", booking);
-        })
-        .RequireAuthorization(p => p.RequireRole("User"));
+        var booking = await bookingService.BookAsync(userId, request, ct);
+        return Created($"/bookings/{booking.Id}", booking);
+    }
 
-        app.MapGet(Routes.Bookings.My, async (
-            IBookingService svc,
-            ClaimsPrincipal principal,
-            CancellationToken ct) =>
-        {
-            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId is null) return Results.Unauthorized();
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyBookings(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Unauthorized();
 
-            logger.LogInformation("My bookings requested by user {UserId}", userId);
-            return Results.Ok(await svc.GetMyBookingsAsync(userId, ct));
-        })
-        .RequireAuthorization();
-
-        app.MapGet(Routes.Bookings.AdminAll, async (IBookingService svc, CancellationToken ct) =>
-        {
-            logger.LogInformation("Admin: all bookings requested");
-            return Results.Ok(await svc.GetAllBookingsAsync(ct));
-        })
-        .RequireAuthorization(p => p.RequireRole("Admin"));
+        logger.LogInformation("My bookings requested by user {UserId}", userId);
+        return Ok(await bookingService.GetMyBookingsAsync(userId, ct));
     }
 }

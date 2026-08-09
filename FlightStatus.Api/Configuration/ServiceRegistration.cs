@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using FlightStatus.Api.Controllers;
 using FlightStatus.Api.Data;
 using FlightStatus.Api.Data.Entities;
 using FlightStatus.Api.Data.Repositories;
@@ -22,18 +21,18 @@ public static class ServiceRegistration
         this IServiceCollection services,
         IConfiguration config)
     {
-        services.ConfigureHttpJsonOptions(opts =>
+        // MVC controllers with attribute routing + JSON options
+        services.AddControllers().AddJsonOptions(opts =>
         {
-            opts.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            opts.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            opts.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+            opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
         });
 
         services.AddDatabase(config);
         services.AddIdentityAndAuth(config);
         services.AddRepositories();
         services.AddApplicationServices();
-        services.AddControllerDefinitions();
 
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
@@ -113,18 +112,10 @@ public static class ServiceRegistration
     {
         services.AddScoped<IFlightStatusProvider, AeroTrackStubProvider>();
         services.AddScoped<IFlightStatusProvider, QuickFlightStubProvider>();
-        // Registered against their interfaces so endpoint handlers inject abstractions, not concretions
+        // Registered against their interfaces so controllers inject abstractions, not concretions
         services.AddScoped<IFlightCatalogService,      FlightCatalogService>();
         services.AddScoped<IFlightStatusQueryService,  FlightStatusQueryService>();
         services.AddScoped<IAuthService,               AuthService>();
         services.AddScoped<IBookingService,            BookingService>();
-    }
-
-    // Each controller registered explicitly so ILogger<T> is injected via DI rather than Activator.CreateInstance
-    private static void AddControllerDefinitions(this IServiceCollection services)
-    {
-        services.AddSingleton<IController, AuthController>();
-        services.AddSingleton<IController, FlightController>();
-        services.AddSingleton<IController, BookingController>();
     }
 }

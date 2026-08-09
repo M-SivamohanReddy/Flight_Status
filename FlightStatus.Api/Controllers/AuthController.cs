@@ -1,33 +1,38 @@
 using FlightStatus.Api.Models.Auth;
 using FlightStatus.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FlightStatus.Api.Controllers;
 
-public sealed class AuthController(ILogger<AuthController> logger) : IController
+[ApiController]
+[Route("auth")]
+public sealed class AuthController(
+    IAuthService authService,
+    ILogger<AuthController> logger) : ControllerBase
 {
-    public void RegisterRoutes(IEndpointRouteBuilder app)
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        app.MapPost(Routes.Auth.Register, async (RegisterRequest req, IAuthService auth) =>
+        logger.LogInformation("Register request for {Email}", request.Email);
+
+        var result = await authService.RegisterAsync(request);
+        if (!result.Succeeded)
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+
+        return Ok(new { message = "Registration successful. Please log in." });
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        logger.LogInformation("Login attempt for {Email}", request.Email);
+
+        var response = await authService.LoginAsync(request);
+        if (response is null)
         {
-            logger.LogInformation("Register request for {Email}", req.Email);
-
-            var result = await auth.RegisterAsync(req);
-            return result.Succeeded
-                ? Results.Ok(new { message = "Registration successful. Please log in." })
-                : Results.BadRequest(new { errors = result.Errors.Select(e => e.Description) });
-        });
-
-        app.MapPost(Routes.Auth.Login, async (LoginRequest req, IAuthService auth) =>
-        {
-            logger.LogInformation("Login attempt for {Email}", req.Email);
-
-            var response = await auth.LoginAsync(req);
-            if (response is null)
-            {
-                logger.LogWarning("Failed login for {Email}", req.Email);
-                return Results.Unauthorized();
-            }
-            return Results.Ok(response);
-        });
+            logger.LogWarning("Failed login for {Email}", request.Email);
+            return Unauthorized();
+        }
+        return Ok(response);
     }
 }
