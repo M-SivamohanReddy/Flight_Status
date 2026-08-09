@@ -1,6 +1,7 @@
 using FlightStatus.Api.Models;
 using FlightStatus.Api.Providers;
 using FlightStatus.Api.Services;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlightStatus.Tests;
@@ -11,7 +12,8 @@ public class FlightStatusQueryServiceTests
     private static readonly DateTimeOffset Base = new(2026, 1, 1, 10, 0, 0, TimeSpan.Zero);
 
     private static FlightStatusQueryService Build(params IFlightStatusProvider[] providers) =>
-        new(providers, NullLogger<FlightStatusQueryService>.Instance);
+        new(providers, NullLogger<FlightStatusQueryService>.Instance,
+            new MemoryCache(new MemoryCacheOptions()));
 
     private static ProviderFlightStatus MakeStatus(
         string flightNumber,
@@ -101,9 +103,13 @@ public class FlightStatusQueryServiceTests
     [Fact]
     public async Task Both_providers_on_time_returns_OnTime()
     {
-        // AA100 scenario — both providers respond; AeroTrack has later timestamp
-        var service = Build(new AeroTrackStubProvider(), new QuickFlightStubProvider());
-        var result = await service.GetStatusAsync("AA100", AnyDate);
+        // S1 — AeroTrack has later lastUpdatedUtc; 5-min delta -> OnTime
+        var at = new FixedProvider("AeroTrack", MakeStatus("AA100", "AeroTrack", "ON_SCHEDULE",
+            Base.AddHours(1), schedDep: Base, actDep: Base.AddMinutes(5), terminal: "T1", gate: "A10"));
+        var qf = new FixedProvider("QuickFlight", MakeStatus("AA100", "QuickFlight", "on-time",
+            Base.AddMinutes(45), schedDep: Base));
+        var service = Build(at, qf);
+        var result  = await service.GetStatusAsync("AA100", AnyDate);
 
         Assert.Equal(Api.Models.FlightStatus.OnTime, result.Status);
         Assert.Equal("AeroTrack", result.SourceProvider);
@@ -113,8 +119,14 @@ public class FlightStatusQueryServiceTests
     [Fact]
     public async Task Both_providers_delayed_returns_Delayed_with_reason()
     {
-        var service = Build(new AeroTrackStubProvider(), new QuickFlightStubProvider());
-        var result = await service.GetStatusAsync("AA200", AnyDate);
+        // S2 — DELAYED with 45-min delta; AeroTrack carries delay reason
+        var at = new FixedProvider("AeroTrack", MakeStatus("AA200", "AeroTrack", "DELAYED",
+            Base.AddMinutes(45), schedDep: Base, actDep: Base.AddMinutes(45),
+            terminal: "T2", gate: "B5", delayReason: "Air Traffic Control"));
+        var qf = new FixedProvider("QuickFlight", MakeStatus("AA200", "QuickFlight", "delayed",
+            Base.AddMinutes(30), schedDep: Base));
+        var service = Build(at, qf);
+        var result  = await service.GetStatusAsync("AA200", AnyDate);
 
         Assert.Equal(Api.Models.FlightStatus.Delayed, result.Status);
         Assert.Equal("Air Traffic Control", result.DelayReason);
@@ -123,8 +135,13 @@ public class FlightStatusQueryServiceTests
     [Fact]
     public async Task AA300_returns_Cancelled()
     {
-        var service = Build(new AeroTrackStubProvider(), new QuickFlightStubProvider());
-        var result = await service.GetStatusAsync("AA300", AnyDate);
+        // S3 — CANCELLED; AeroTrack has later timestamp (-120 min vs -150 min)
+        var at = new FixedProvider("AeroTrack", MakeStatus("AA300", "AeroTrack", "CANCELLED",
+            Base.AddMinutes(-120), terminal: "T3", delayReason: "Maintenance"));
+        var qf = new FixedProvider("QuickFlight", MakeStatus("AA300", "QuickFlight", "cancelled",
+            Base.AddMinutes(-150)));
+        var service = Build(at, qf);
+        var result  = await service.GetStatusAsync("AA300", AnyDate);
 
         Assert.Equal(Api.Models.FlightStatus.Cancelled, result.Status);
     }
@@ -132,8 +149,14 @@ public class FlightStatusQueryServiceTests
     [Fact]
     public async Task AA700_raw_OnSchedule_but_delayed_by_delta()
     {
-        var service = Build(new AeroTrackStubProvider(), new QuickFlightStubProvider());
-        var result = await service.GetStatusAsync("AA700", AnyDate);
+        // S7 — ON_SCHEDULE label but 20-min delta overrides it -> Delayed
+        var at = new FixedProvider("AeroTrack", MakeStatus("AA700", "AeroTrack", "ON_SCHEDULE",
+            Base.AddMinutes(30), schedDep: Base, actDep: Base.AddMinutes(20),
+            terminal: "T4", gate: "E7"));
+        var qf = new FixedProvider("QuickFlight", MakeStatus("AA700", "QuickFlight", "on-time",
+            Base.AddMinutes(10), schedDep: Base));
+        var service = Build(at, qf);
+        var result  = await service.GetStatusAsync("AA700", AnyDate);
 
         Assert.Equal(Api.Models.FlightStatus.Delayed, result.Status);
     }
@@ -141,8 +164,8 @@ public class FlightStatusQueryServiceTests
     [Fact]
     public async Task Unknown_flight_returns_Unknown()
     {
-        var service = Build(new AeroTrackStubProvider(), new QuickFlightStubProvider());
-        var result = await service.GetStatusAsync("XX999", AnyDate);
+        var service = Build(new NullProvider("AeroTrack"), new NullProvider("QuickFlight"));
+        var result  = await service.GetStatusAsync("XX999", AnyDate);
 
         Assert.Equal(Api.Models.FlightStatus.Unknown, result.Status);
         Assert.Equal("None", result.SourceProvider);
