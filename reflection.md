@@ -1,59 +1,68 @@
-# Reflection
+ï»¿# Reflection
 
-## What Was Built
+## What Was Delivered
 
-The core challenge (flight status lookup with two providers, normalisation, merge, Angular UI) was completed in full. Beyond the specification, the following was added to demonstrate production-grade engineering:
+The core challenge (flight status lookup, two providers, normalisation, merge, Angular UI, xUnit tests) was completed in full and committed in the correct order (spec.md first, then implementation).
 
-- **ASP.NET Core Identity + JWT auth** with Admin and User roles
-- **SQL Server LocalDB persistence** via EF Core 9 with the Repository Pattern
-- **Flight bookings** (users can book and view their own; admins see all)
-- **IMemoryCache** on the status query service (60-second TTL per flight+date)
-- **Client-side pagination** (5 rows per page) on all booking tables
-- **MCP server** (`@modelcontextprotocol/server` v2) exposing `list_flights` and `check_flight_status` tools over stdio
-- **Floating chatbot widget** in Angular with natural-language flight queries
-- **Docker Compose** for one-command full-stack startup
-- **14 deterministic stub scenarios** covering early arrival, boundary (exactly 15 min), label-overridden-by-delta, and single-provider cases
+Beyond the specified scope, the following was added:
+
+| Addition | Rationale |
+|----------|-----------|
+| ASP.NET Core Identity + JWT (Admin / User roles) | Demonstrates role-based access control and real-world auth patterns |
+| SQL Server LocalDB + EF Core 9 | Persistence via Repository Pattern; data survives restarts |
+| Flight bookings (create / list / admin view) | Realistic user journey beyond read-only status lookup |
+| IMemoryCache (60 s TTL per flight+date) | Prevents redundant provider round-trips on the fleet board |
+| Client-side pagination (5 rows/page) | Practical UX for tables with many rows |
+| Idempotent SeedDelta() | New stub scenarios can be added without dropping existing data |
+| MCP server (list_flights + check_flight_status tools) | Makes SkyRoute queryable from Claude Desktop / Copilot Agent |
+| Floating chatbot widget (natural language) | In-app search without navigating to a form |
+| Docker Compose | One-command startup for reviewers without a .NET or Node environment |
 
 ---
 
-## What Would I Improve With More Time
+## What I Would Improve With More Time
 
 ### Testing
 
-The 21 unit tests cover the core business logic (StatusNormaliser, FlightStatusQueryService). Given more time I would add:
+The 21 unit tests cover StatusNormaliser and FlightStatusQueryService. Missing:
 
-- **Integration tests** using `WebApplicationFactory<Program>` to test the full HTTP pipeline (validation, auth, endpoint routing)
-- **E2E tests** using Playwright — especially the search form, login/logout flow, and the admin/user dashboard role separation
-- **Repository tests** against an in-memory SQLite provider to verify the EF Core query translations
+- **Integration tests** using `WebApplicationFactory<Program>` â€” test the full HTTP pipeline (auth middleware, validation, endpoint routing, JSON serialisation) with a real in-memory database.
+- **E2E tests** using Playwright â€” cover the login/logout flow, admin vs user role separation, and the chatbot widget's happy path.
+- **Repository tests** against SQLite in-memory â€” verify EF Core query translations without hitting LocalDB.
 
 ### Architecture
 
-- **Retry + circuit-breaker on providers** using Microsoft.Extensions.Http.Resilience — the current `FetchSafeAsync` catch-all silently suppresses provider failures; a circuit-breaker would fail fast after repeated errors rather than always waiting for a timeout
-- **Background status pre-fetch** — when the user opens their dashboard, fire `GET /flights/status` for each booked flight in the background and cache the results, so "Check Status" is instant
-- **Outbox pattern for bookings** — currently a booking write and its confirmation are not atomic; adding an outbox table would guarantee at-least-once delivery if the process crashes mid-request
+- **Retry + circuit-breaker on providers** using `Microsoft.Extensions.Http.Resilience` â€” the current `FetchSafeAsync` catch-all silently absorbs failures; a circuit-breaker would fail fast after repeated errors rather than always waiting for a provider timeout.
+- **Background status pre-fetch** â€” when a user opens their dashboard, fire concurrent status requests for all booked flights and warm the cache, so "Check Status" is instant.
+- **Health checks endpoint** (`/healthz`) reporting DB connectivity and cache state â€” essential for container orchestration readiness/liveness probes.
+- **Structured logging with correlation IDs** â€” Serilog + OpenTelemetry would let you trace a single `/flights/status` call through both provider queries with one trace ID.
 
-### DX / Operability
+### Security / Operability
 
-- **Health checks** (`/healthz`) reporting DB connectivity and cache state
-- **Structured logging** with Serilog ? OpenTelemetry ? Jaeger for distributed tracing across the two provider calls
-- **`appsettings.Development.json` for secrets** — the JWT signing key should be gitignored in development and injected via environment variable in CI; currently it is committed as a demo key
+- **Move JWT secret to `appsettings.Development.json`** (gitignored) and supply it via an environment variable in CI/CD. The current approach (key in `appsettings.json`) is intentional for a clean-clone demo but would not be acceptable in production.
+- **HTTPS enforcement** â€” the API currently uses HTTP only. Adding a dev certificate and enforcing HTTPS redirect is a one-line change but was omitted to simplify the quick-start instructions.
+- **Angular production build** â€” `ng build --configuration production` reduces the bundle by ~40% through tree-shaking and minification. The Docker image uses the production build; local `ng serve` uses the development build.
 
 ---
 
-## Critical Reflection on AI Tooling
+## Critical Reflection on AI Tooling (GitHub Copilot)
 
-### What worked well
+### Where AI accelerated development
 
-GitHub Copilot accelerated the implementation of repetitive but error-prone code: EF Core entity configuration, the `StatusNormaliser` switch tables, the Angular CSS grid and status badge tokens, and all the DI wiring. Each suggestion was reviewed before acceptance — the AI never replaced judgement, it removed friction.
+- **Boilerplate reduction** â€” EF Core entity configuration, DI registration blocks, Angular component scaffolding, and CSS token tables were generated quickly and accurately.
+- **Spec-first thinking** â€” prompting Copilot to reason about edge cases (15-min boundary, delta vs label priority, tie-break) *before* writing code produced a specification concrete enough to be directly translated into tests and assertions.
+- **Test coverage** â€” the AI suggested the `ThrowingProvider` test double (provider-exception-treated-as-no-data) which was not in the original test plan but is an important contract guarantee.
 
-The most valuable AI interaction was during **Phase 1 (spec.md)**. Prompting the AI to reason about edge cases (exactly-15-minute boundary, raw-label vs delta override, tie-break strategy) before writing any code produced a specification that the implementation could be mechanically derived from. This reduced rework significantly.
+### Where AI required correction
 
-### Where AI fell short
+- **DI lifetime conflicts** â€” the captive dependency between a Singleton factory and Scoped `DbContextOptions` required two correction cycles; the AI's first suggestion (`PooledDbContextFactory`) references a semi-internal namespace.
+- **Angular template corruption** â€” several `replace_string_in_file` operations left stale code outside the class body when the search string matched multiple locations; files required manual complete rewrites.
+- **`EnsureCreated` vs `Migrate` conflict** â€” the AI initially suggested running `Database.Migrate()` on a database that was created by `EnsureCreated` (no `__EFMigrationsHistory` table), which would fail at runtime. The correct fix (conditional EnsureDeleted + EnsureCreated when Identity tables are absent) required human reasoning about the boot-time state.
 
-- **DI lifetime conflicts** — the captive dependency issue (`AddDbContext` + `AddDbContextFactory` ordering, `PooledDbContextFactory` namespace) required iterative manual debugging that the AI could not resolve without multiple correction cycles
-- **Angular template corruption** — several `replace_string_in_file` operations left duplicate class definitions when the search string matched multiple positions; the AI needed manual intervention to rewrite entire files cleanly
-- **Concurrent DbContext bug** — the original suggestion to use a Singleton repository with a Scoped DbContext directly (rather than `IDbContextFactory`) caused `Task.WhenAll` failures; the AI's first fix attempt used `PooledDbContextFactory` which is in an internal namespace, requiring a second correction
+### Honest productivity assessment
 
-### Honest assessment
+AI tooling compressed approximately 60â€“70% of the implementation time. The remaining 30â€“40% â€” design decisions, debugging DI and EF Core lifetime issues, cross-cutting concerns, and fixing AI-introduced errors â€” required human reasoning that Copilot could *inform* but not *replace*. The most effective pattern throughout was:
 
-AI tooling compressed approximately 60–70% of the typing work. The remaining 30–40% — design decisions, debugging DI lifetime conflicts, fixing template corruption, and cross-cutting concerns like the `EnsureCreated` vs `Migrate` conflict — required human reasoning that the AI could support but not replace. The most productive pattern was: **human defines the problem precisely ? AI drafts the implementation ? human reviews and corrects**.
+> **Human defines the problem precisely â†’ Copilot drafts the implementation â†’ Human reviews, corrects, and accepts.**
+
+The spec-first discipline (writing spec.md before any code) was the single most valuable practice: it gave the AI a precise, unambiguous contract to implement against and eliminated an entire category of back-and-forth.

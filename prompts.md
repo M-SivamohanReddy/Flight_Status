@@ -1,81 +1,126 @@
-# AI Prompts Log
+ï»¿# AI Prompts Log
 
-Significant GitHub Copilot prompts used during development of the SkyRoute Flight Status Tracker, with decision notes on key judgement calls.
+Significant GitHub Copilot prompts used during development, with notes on key decisions.
 
 ---
 
-## Phase 1 — Analysis & Specification
+## Phase 1 â€” Analysis & Specification
 
-**Prompt:** "Analyse the requirements from the challenge PDF and create a spec.md covering unified domain models, provider response models, the IFlightStatusProvider interface, status normalisation rules, merge rules, API contracts, validation rules, error-handling behaviour, deterministic stub scenarios, frontend states, and key assumptions."
+**Prompt:**
+"Analyse the challenge PDF and create spec.md covering: unified domain models,
+provider response models, IFlightStatusProvider interface, status normalisation rules,
+merge rules, API contracts, validation rules, error-handling behaviour, deterministic
+stub scenarios, frontend states, and key assumptions. Do not create implementation
+files until spec.md is complete."
 
 **Decisions made:**
-- Chose **winner-takes-all merge** (not field-level blending) — simpler, predictable, and avoids the ambiguity of which provider's terminal/gate is "correct" when both respond.
-- Defined **?t = 900 s = OnTime** so the "within 15 minutes" boundary is explicit and inclusive.
-- Decided **time delta overrides raw status label** — if actual times are present, they are more reliable than a provider's status string. This handles the AA700 edge case where the label says ON_SCHEDULE but the flight is 20 minutes late.
-- Added **AeroTrack tie-break** when `lastUpdatedUtc` values are equal, because AeroTrack carries more detail (terminal, gate, delay reason).
+- **Winner-takes-all merge** â€” simpler than field-level blending and avoids ambiguity when providers disagree on terminal/gate.
+- **Delta <= 900 s = OnTime** â€” makes the "within 15 minutes" boundary explicit and inclusive.
+- **Time delta overrides raw label** â€” actual times are more reliable than a provider's status string; handles the AA700 edge case (ON_SCHEDULE label, 20-min late actual).
+- **AeroTrack tie-break** on equal timestamps â€” AeroTrack carries terminal, gate, delay reason, so it is the richer source.
+- **spec.md committed first** â€” enforced by the challenge; confirmed by git log showing only spec.md in the initial commit.
 
 ---
 
-## Phase 2 — Backend Core (Providers, Normaliser, Merge, Tests)
+## Phase 2 â€” Backend Core (Providers, Normaliser, Merge)
 
-**Prompt:** "Implement IFlightStatusProvider, AeroTrackStubProvider, QuickFlightStubProvider, StatusNormaliser, and FlightStatusQueryService following the rules defined in spec.md. The providers must be deterministic and cover all 10 stub scenarios."
+**Prompt:**
+"Implement IFlightStatusProvider, AeroTrackStubProvider, QuickFlightStubProvider,
+StatusNormaliser, and FlightStatusQueryService following spec.md. Stubs must be
+deterministic in-memory; cover all 10 scenarios from the spec."
 
 **Decisions made:**
-- `StatusNormaliser` checks Cancelled/Diverted first (no delta check), then departure delta, then arrival delta, then falls back to raw string — this priority order was chosen deliberately so terminal statuses are never accidentally downgraded by a time delta.
-- `FlightStatusQueryService` uses `Task.WhenAll` for concurrent provider calls. Provider exceptions are caught in `FetchSafeAsync` and logged as warnings — never surfaced to the caller.
-- Both stubs are registered as **Scoped** (later promoted to use `IDbContextFactory` when EF Core was added).
+- StatusNormaliser checks Cancelled/Diverted first (no delta check), then departure delta, then arrival delta, then raw string fallback. This priority order prevents terminal statuses from being overridden by a time calculation.
+- FlightStatusQueryService uses `Task.WhenAll` for concurrent provider queries. Exceptions are caught in `FetchSafeAsync` and logged as warnings â€” never surfaced to the caller.
 
-**Prompt:** "Write xUnit tests for StatusNormaliser and FlightStatusQueryService covering all 10 stub scenarios plus edge cases: early arrival, exactly 15-minute boundary, delta-overrides-label, and provider-exception-treated-as-no-data."
+**Prompt:**
+"Write xUnit tests for StatusNormaliser and FlightStatusQueryService covering the
+10 stub scenarios plus: early arrival (negative delta), exactly 15-min boundary,
+delta overrides label, provider exception treated as no-data."
 
-**Decision:** Tests use in-memory test doubles (NullProvider, FixedProvider, ThrowingProvider) rather than mocking frameworks — simpler, no extra dependency, and proves the interface contract directly.
-
----
-
-## Phase 3 — Minimal API Endpoint + Angular UI
-
-**Prompt:** "Create the GET /flights/status minimal API endpoint with validation (400 for missing/invalid params), wire up DI, add CORS for localhost:4200, and configure JSON serialisation to use camelCase and string enums."
-
-**Decision:** Validation is done inline in the endpoint handler (not via attributes) because Minimal APIs don't support `[ApiController]` model validation — keeping it explicit and visible.
-
-**Prompt:** "Create the Angular 18 standalone components: SearchFormComponent (flight number + date inputs with validation), ResultCardComponent (colour-coded by status, AeroTrack-only fields shown only when non-null), FlightListComponent (fleet board with 9 UI states, column filters, pagination). Use the existing FlightStatusService."
-
-**Decision:** Used Angular `signal()` for the auth user state in AuthService rather than BehaviorSubject — signals are the Angular 17+ idiomatic approach and avoid manual subscription management.
+**Decision:** Tests use hand-written test doubles (NullProvider, FixedProvider, ThrowingProvider) rather than a mocking library â€” zero extra dependency, and the test doubles prove the interface contract rather than testing internal implementation details.
 
 ---
 
-## Phase 4 — Database (EF Core + Repository Pattern)
+## Phase 3 â€” Minimal API + Angular UI
 
-**Prompt:** "Add EF Core 9 with SQL Server LocalDB. Implement the Repository Pattern with IFlightCatalogRepository and IFlightProviderDataRepository. Use IDbContextFactory<T> as a Singleton factory for repositories so Task.WhenAll concurrent provider queries each get their own DbContext and avoid the 'second operation on same DbContext' error."
+**Prompt:**
+"Create GET /flights/status with inline validation (400 for missing/invalid params),
+JSON options (camelCase, string enums), and CORS for localhost:4200."
 
-**Decision:** `AddDbContext` is called **before** `AddDbContextFactory` so that Identity's Scoped DbContext registration wins the TryAdd race. The Singleton factory uses a `DirectDbContextFactory` with its own options, completely independent of the DI-registered `DbContextOptions`, avoiding the captive dependency error.
+**Decision:** Validation is inline in the endpoint handler. Minimal APIs do not support [ApiController] automatic model validation, so keeping validation explicit and readable was the right choice.
 
-**Prompt:** "Add ASP.NET Core Identity with JWT Bearer auth. Seed 2 roles (Admin, User) and 2 demo users. Admin sees all flight details and bookings; User can book flights and see their own bookings."
+**Prompt:**
+"Create Angular 18 standalone components: SearchFormComponent, ResultCardComponent,
+FlightListComponent with column filters and the 9 UI states from the spec. Use
+reactive forms for validation."
 
-**Decision:** `EnsureDeleted + EnsureCreated` is used on first boot when Identity tables are missing, rather than `Migrate()`, because the project started with `EnsureCreated` for the pre-auth schema and adding a migration on top of a manually-created DB causes conflicts. `IdentitySeeder.SeedAsync` is idempotent and runs every boot.
-
----
-
-## Phase 5 — Beyond-Spec Features
-
-**Prompt:** "Add IMemoryCache to FlightStatusQueryService to cache status results per flight+date for 60 seconds. Add pagination (5 per page) to the admin and user bookings tables. Add 4 new edge-case stub scenarios via an idempotent delta seeder."
-
-**Decision:** Cache key is `fstatus:{flightNumber}:{date:yyyyMMdd}` — date-keyed so status changes on different dates are never cross-contaminated.
-
-**Prompt:** "Create a floating Angular chatbot widget that processes natural language flight queries using pattern matching and calls the public API. Also create an MCP server using @modelcontextprotocol/server v2 SDK exposing list_flights and check_flight_status tools over stdio."
-
-**Decision:** The chatbot uses **rule-based regex**, not an LLM, so it works offline without API keys. Swapping in LLM completions later only requires replacing the `processMessage()` method — the rest of the UI is unchanged.
-
-**Prompt:** "Redesign SearchFormComponent and ResultCardComponent with a polished CSS grid layout, gradient button, animated status banner, times grid, info chips for terminal/gate, and delay reason warning banner."
-
-**Decision:** `ResultCardComponent.statusIcon` returns Unicode emoji rather than SVG icons to avoid an icon library dependency. The status banner uses CSS gradients rather than solid colours for visual depth.
+**Decision:** Used Angular `signal()` for the auth user state instead of BehaviorSubject â€” signals are the idiomatic Angular 17+ approach and eliminate explicit subscription teardown.
 
 ---
 
-## Key Judgement Calls (cross-cutting)
+## Phase 4 â€” Database, Repository Pattern, Identity, JWT
 
-| Decision | Rationale |
-|----------|-----------|
-| Added auth + persistence beyond spec | Demonstrates production-grade thinking; core requirements are fully met independently |
-| Public `GET /flights/status` | Flight status is public information; enables MCP chatbot and landing-page search without requiring login |
-| `DatabaseSeeder.SeedDelta()` always runs | Idempotent — new stub scenarios can be added without dropping data |
-| `::ng-deep` in LandingComponent | The SearchFormComponent grid must collapse to single-column inside the landing card without altering the component's own CSS |
+**Prompt:**
+"Add EF Core 9 with SQL Server LocalDB. Implement the Repository Pattern:
+IFlightCatalogRepository and IFlightProviderDataRepository. Use IDbContextFactory<T>
+as a Singleton for repositories so Task.WhenAll concurrent provider queries each get
+their own DbContext â€” avoids the 'second operation on same context' EF Core error."
+
+**Decision:** Two registrations are needed: `AddDbContext<T>` (Scoped) for Identity, and a `DirectDbContextFactory` (Singleton) for repositories. The factory carries its own `DbContextOptions`, avoiding the captive dependency error that occurs when a Singleton depends on a Scoped options object.
+
+**Prompt:**
+"Add ASP.NET Core Identity + JWT Bearer auth. Seed Admin and User roles plus 2 demo
+accounts. Admin sees all flight details and bookings; User can book flights and view
+their own bookings only."
+
+**Decision:** `EnsureDeleted + EnsureCreated` runs on first boot (when Identity tables are missing) rather than `Database.Migrate()`, because the project pre-dates the migration file and applying a migration on top of a manually-created schema causes a conflict. `IdentitySeeder.SeedAsync` is idempotent and runs every boot.
+
+**Prompt:**
+"Implement the Repository Pattern with interfaces for all data access. Register
+IFlightCatalogRepository and IFlightProviderDataRepository as Singleton (factory-backed),
+IBookingRepository as Scoped (uses Scoped DbContext)."
+
+**Decision:** Booking writes have no concurrent-call requirement within a single request, so a Scoped repository using the Scoped DbContext is correct and simpler than the factory approach.
+
+---
+
+## Phase 5 â€” Beyond-Spec Enhancements
+
+**Prompt:**
+"Add IMemoryCache to FlightStatusQueryService. Cache per flightNumber+date for 60 s
+with 30 s sliding expiry. Add 5-per-page pagination to admin and user booking tables.
+Add 4 new edge-case stub scenarios via an idempotent SeedDelta() method."
+
+**Decisions made:**
+- Cache key `fstatus:{flightNumber}:{date:yyyyMMdd}` is date-scoped so different travel dates are never cross-contaminated.
+- SeedDelta() checks each row individually before inserting â€” safe to run on every boot without data loss on an existing database.
+
+**Prompt:**
+"Create a floating Angular chatbot widget. Pattern-match natural language (list flights,
+check AA100, AA200 on 2026-08-10) and call the public API. Also create an MCP server
+using @modelcontextprotocol/server v2 SDK with list_flights and check_flight_status
+tools over stdio."
+
+**Decisions made:**
+- Chatbot uses regex pattern matching, not an LLM â€” works offline without API keys; replacing the NLP layer later only requires changing `processMessage()`.
+- MCP server calls the same public REST endpoints the Angular app uses â€” no duplication of data access logic.
+- `.vscode/mcp.json` pre-configured so Copilot Agent can call the tools immediately without manual setup.
+
+**Prompt:**
+"Redesign SearchFormComponent and ResultCardComponent with CSS grid layout, gradient
+button, animated status banner, times grid, and info chips for terminal/gate."
+
+**Decision:** Status icons are Unicode emoji rather than SVG icons â€” avoids an icon library dependency while still conveying visual meaning clearly.
+
+---
+
+## Key Judgement Calls
+
+| Decision | Why |
+|----------|-----|
+| Auth + persistence added beyond spec | Demonstrates production-grade thinking; core requirements are satisfied independently |
+| Public GET /flights/status (no auth) | Flight status is public information; enables landing-page search and MCP chatbot without requiring a JWT |
+| `DirectDbContextFactory` over `PooledDbContextFactory` | `PooledDbContextFactory` is in `Microsoft.EntityFrameworkCore.Internal` (semi-private); the custom implementation is explicit and dependency-free |
+| `::ng-deep` in LandingComponent CSS | Collapses the two-column SearchForm grid to single-column inside the landing card without modifying the component's own CSS â€” parent-context styling without breaking encapsulation |
+| `EnsureDeleted + EnsureCreated` instead of Migrate | Project started before migrations; conditionally runs only when Identity tables are missing, so existing bookings survive restarts |
