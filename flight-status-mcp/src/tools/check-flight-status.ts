@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
-import { fmtTime, type FlightStatus } from '../types.js';
+import { ApiError, type SkyRouteApiClient } from '../api-client.js';
+import { fmtTime } from '../types.js';
 
 const inputSchema = {
   flightNumber: z.string()
@@ -9,7 +10,7 @@ const inputSchema = {
     .describe('Travel date in yyyy-MM-dd format. Defaults to today if omitted.'),
 };
 
-export function registerCheckFlightStatus(server: McpServer, apiBase: string): void {
+export function registerCheckFlightStatus(server: McpServer, client: SkyRouteApiClient): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (server as any).registerTool(
     'check_flight_status',
@@ -26,34 +27,28 @@ export function registerCheckFlightStatus(server: McpServer, apiBase: string): v
       const flightNumber = (args['flightNumber'] ?? '') as string;
       const date = (args['date'] as string | undefined) ?? new Date().toISOString().split('T')[0];
 
-      const url = `${apiBase}/flights/status?flightNumber=${encodeURIComponent(flightNumber)}&date=${encodeURIComponent(date)}`;
-      const res = await fetch(url);
+      try {
+        const s = await client.getFlightStatus(flightNumber, date);
 
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        return {
-          content: [{ type: 'text' as const, text: `Error checking ${flightNumber}: ${res.status}\n${body}` }],
-          isError: true,
-        };
+        let text = `Flight ${s.flightNumber}  |  ${s.date}\n`;
+        text += `Status:   ${s.status}\n`;
+        text += `\nDeparture\n`;
+        text += `  Scheduled : ${fmtTime(s.scheduledDeparture)}\n`;
+        text += `  Actual    : ${fmtTime(s.actualDeparture)}\n`;
+        text += `\nArrival\n`;
+        text += `  Scheduled : ${fmtTime(s.scheduledArrival)}\n`;
+        text += `  Actual    : ${fmtTime(s.actualArrival)}\n`;
+        if (s.terminal)    text += `\nTerminal  : ${s.terminal}`;
+        if (s.gate)        text += `\nGate      : ${s.gate}`;
+        if (s.delayReason) text += `\nDelay     : ${s.delayReason}`;
+        if (s.message)     text += `\nNote      : ${s.message}`;
+        text += `\n\nData from : ${s.sourceProvider}  (updated ${fmtTime(s.lastUpdatedUtc)})`;
+
+        return { content: [{ type: 'text' as const, text }] };
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : `Unexpected error checking ${flightNumber}.`;
+        return { content: [{ type: 'text' as const, text: msg }], isError: true };
       }
-
-      const s: FlightStatus = await res.json();
-
-      let text = `Flight ${s.flightNumber}  |  ${s.date}\n`;
-      text += `Status:   ${s.status}\n`;
-      text += `\nDeparture\n`;
-      text += `  Scheduled : ${fmtTime(s.scheduledDeparture)}\n`;
-      text += `  Actual    : ${fmtTime(s.actualDeparture)}\n`;
-      text += `\nArrival\n`;
-      text += `  Scheduled : ${fmtTime(s.scheduledArrival)}\n`;
-      text += `  Actual    : ${fmtTime(s.actualArrival)}\n`;
-      if (s.terminal)    text += `\nTerminal  : ${s.terminal}`;
-      if (s.gate)        text += `\nGate      : ${s.gate}`;
-      if (s.delayReason) text += `\nDelay     : ${s.delayReason}`;
-      if (s.message)     text += `\nNote      : ${s.message}`;
-      text += `\n\nData from : ${s.sourceProvider}  (updated ${fmtTime(s.lastUpdatedUtc)})`;
-
-      return { content: [{ type: 'text' as const, text }] };
     }
   );
 }

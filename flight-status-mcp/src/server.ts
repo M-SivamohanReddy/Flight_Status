@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/server';
+import { SkyRouteApiClient } from './api-client.js';
 import { registerListFlights } from './tools/list-flights.js';
 import { registerCheckFlightStatus } from './tools/check-flight-status.js';
 
@@ -10,8 +11,10 @@ export function createServer(): McpServer {
     version: '1.0.0',
   });
 
-  registerListFlights(server, API_BASE);
-  registerCheckFlightStatus(server, API_BASE);
+  const client = new SkyRouteApiClient(API_BASE);
+
+  registerListFlights(server, client);
+  registerCheckFlightStatus(server, client);
 
   return server;
 }
