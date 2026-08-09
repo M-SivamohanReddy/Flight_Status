@@ -1,20 +1,24 @@
 <div class="app-container">
   <header>
-    <h1>? SkyRoute — Flight Status</h1>
-    <p class="subtitle">Enter a flight number and date to check status.</p>
+    <h1>? SkyRoute ï¿½ Flight Status</h1>
+    <p class="subtitle">Search by flight number, or click any flight in the board below.</p>
   </header>
 
   <main>
     <app-search-form (search)="onSearch($event)"></app-search-form>
+
+    <div id="detail-anchor"></div>
 
     <div class="error-banner" *ngIf="errorMessage" role="alert">
       <strong>Error:</strong> {{ errorMessage }}
     </div>
 
     <app-result-card *ngIf="result" [result]="result"></app-result-card>
+
+    <app-flight-list (selectFlight)="onSelectFlight($event)"></app-flight-list>
   </main>
 
   <footer>
-    <small>SkyRoute Platform · Demo data only · No real flights</small>
+    <small>SkyRoute Platform ï¿½ Demo data only ï¿½ No real flights</small>
   </footer>
 </div>

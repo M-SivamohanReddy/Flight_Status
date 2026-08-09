@@ -1,0 +1,29 @@
+<div class="landing">
+  <!-- Hero -->
+  <div class="hero-card">
+    <div class="plane-icon">&#x2708;</div>
+    <h1 class="brand">SkyRoute</h1>
+    <p class="tagline">Your Flight Status, Simplified</p>
+
+    <!-- Public search — no login required -->
+    <div class="search-wrapper">
+      <p class="search-label">Check any flight status instantly</p>
+      <app-search-form (search)="onSearch($event)"></app-search-form>
+      <div class="search-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <app-result-card *ngIf="result" [result]="result"></app-result-card>
+    </div>
+
+    <!-- Auth actions -->
+    <div class="divider"><span>or sign in for bookings &amp; full dashboard</span></div>
+    <div class="actions">
+      <button class="btn-primary" (click)="goLogin()">Login</button>
+      <button class="btn-outline" (click)="goRegister()">Register</button>
+    </div>
+
+    <div class="demo-hint">
+      <p>Demo accounts:</p>
+      <code>admin&#64;skyroute.com / Admin&#64;123</code>
+      <code>user&#64;skyroute.com / User&#64;123</code>
+    </div>
+  </div>
+</div>

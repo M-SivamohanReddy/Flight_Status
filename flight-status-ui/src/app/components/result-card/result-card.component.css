@@ -1,70 +1,104 @@
+/* Base card */
 .result-card {
-  border-radius: 10px;
-  border-left: 6px solid #9ca3af;
-  padding: 20px 24px;
+  border-radius: 14px;
+  overflow: hidden;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  margin-top: 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  margin-top: 20px;
 }
 
-.result-card.status-on-time   { border-left-color: #22c55e; }
-.result-card.status-delayed   { border-left-color: #f59e0b; }
-.result-card.status-cancelled { border-left-color: #ef4444; }
-.result-card.status-diverted  { border-left-color: #ef4444; }
-.result-card.status-unknown   { border-left-color: #9ca3af; }
+/* Status banner — full-width coloured strip at top */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
 
+.status-banner.status-on-time   { background: linear-gradient(90deg,#22c55e,#4ade80); color:#14532d; }
+.status-banner.status-delayed   { background: linear-gradient(90deg,#f59e0b,#fbbf24); color:#78350f; }
+.status-banner.status-cancelled { background: linear-gradient(90deg,#ef4444,#f87171); color:#7f1d1d; }
+.status-banner.status-diverted  { background: linear-gradient(90deg,#ef4444,#f87171); color:#7f1d1d; }
+.status-banner.status-unknown   { background: linear-gradient(90deg,#9ca3af,#d1d5db); color:#1f2937; }
+
+.status-icon  { font-size: 1.3rem; }
+.status-text  { font-size: 1.05rem; }
+
+/* Header below banner */
 .card-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.flight-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
+.flight-info  { display: flex; flex-direction: column; gap: 2px; }
+.flight-number { font-size: 1.8rem; font-weight: 900; color: #111827; letter-spacing: -1px; }
+.flight-date   { font-size: 0.8rem; color: #6b7280; font-weight: 500; }
+
+.source-chip {
+  background: #e0f2fe; color: #0369a1;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700;
+  white-space: nowrap;
 }
 
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* Body */
+.card-body { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Two-column times grid */
+.times-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.status-badge.status-on-time   { background: #dcfce7; color: #166534; }
-.status-badge.status-delayed   { background: #fef3c7; color: #92400e; }
-.status-badge.status-cancelled { background: #fee2e2; color: #991b1b; }
-.status-badge.status-diverted  { background: #fee2e2; color: #991b1b; }
-.status-badge.status-unknown   { background: #f3f4f6; color: #374151; }
-
-.card-body { display: flex; flex-direction: column; gap: 8px; }
-
-.detail-row {
-  display: flex;
-  gap: 8px;
+.time-cell {
+  display: flex; flex-direction: column; gap: 3px;
+  background: #f8fafc; border-radius: 8px;
+  padding: 10px 12px;
 }
 
-.label {
-  width: 180px;
-  font-size: 0.85rem;
-  color: #6b7280;
-  flex-shrink: 0;
-}
+.time-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; }
+.time-val   { font-size: 1.05rem; font-weight: 700; color: #111827; }
+.time-actual { font-size: 0.75rem; font-weight: 600; }
+.time-actual.on-time { color: #16a34a; }
+.time-actual.late    { color: #dc2626; }
 
-.value {
-  font-size: 0.95rem;
-  color: #111827;
-  font-weight: 500;
-}
+/* Info chips (terminal, gate) */
+.chips-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
-.delay-reason { color: #b45309; }
-
-.unknown-message {
-  color: #6b7280;
-  font-style: italic;
-  margin: 8px 0 0;
+.info-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: 8px; padding: 8px 14px;
 }
+.info-chip.gate { background: #f0fdf4; border-color: #bbf7d0; }
+
+.chip-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; }
+.chip-val   { font-size: 1.1rem; font-weight: 900; color: #111827; }
+
+/* Delay reason */
+.delay-banner {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 0.85rem; font-weight: 600; color: #92400e;
+}
+.delay-icon { flex-shrink: 0; }
+
+/* Footer */
+.footer-row { border-top: 1px solid #f1f5f9; padding-top: 10px; }
+.footer-note { font-size: 0.72rem; color: #9ca3af; }
+
+/* Unknown state */
+.unknown-body {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 8px 0; text-align: center;
+}
+.unknown-icon { font-size: 2.5rem; }
+.unknown-body p { color: #6b7280; font-size: 0.9rem; margin: 0; font-style: italic; }

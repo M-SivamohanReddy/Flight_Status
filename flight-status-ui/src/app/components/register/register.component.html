@@ -1,0 +1,44 @@
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <span class="logo">✈ SkyRoute</span>
+      <h2>Create your account</h2>
+      <p>Join SkyRoute to track and book flights</p>
+    </div>
+
+    <div class="error-msg"   *ngIf="error">{{ error }}</div>
+    <div class="success-msg" *ngIf="success">Registration successful! Redirecting to login…</div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!success">
+      <div class="row">
+        <div class="field">
+          <label>First Name</label>
+          <input type="text" formControlName="firstName" [class.invalid]="firstName.touched && firstName.invalid" />
+          <span class="err" *ngIf="firstName.touched && firstName.invalid">Required.</span>
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <input type="text" formControlName="lastName" [class.invalid]="lastName.touched && lastName.invalid" />
+          <span class="err" *ngIf="lastName.touched && lastName.invalid">Required.</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" formControlName="email" placeholder="you@example.com"
+          [class.invalid]="email.touched && email.invalid" />
+        <span class="err" *ngIf="email.touched && email.hasError('required')">Email is required.</span>
+        <span class="err" *ngIf="email.touched && email.hasError('email')">Enter a valid email.</span>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" formControlName="password" placeholder="Min 6 chars, 1 uppercase"
+          [class.invalid]="password.touched && password.invalid" />
+        <span class="err" *ngIf="password.touched && password.invalid">Min 6 characters required.</span>
+      </div>
+      <button type="submit" [disabled]="loading">{{ loading ? 'Creating account…' : 'Create account' }}</button>
+    </form>
+
+    <p class="switch">Already have an account? <a routerLink="/login">Login</a></p>
+    <p class="switch"><a routerLink="/">&#8592; Back to home</a></p>
+  </div>
+</div>

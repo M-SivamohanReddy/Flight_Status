@@ -1,5 +1,12 @@
 export type FlightStatus = 'OnTime' | 'Delayed' | 'Cancelled' | 'Diverted' | 'Unknown';
 
+export interface FlightInfo {
+  flightNumber: string;
+  route: string;
+  origin: string;
+  destination: string;
+}
+
 export interface FlightStatusResult {
   flightNumber: string;
   date: string;

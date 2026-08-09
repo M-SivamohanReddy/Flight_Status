@@ -1,0 +1,146 @@
+<div class="dashboard">
+  <nav class="navbar">
+    <span class="brand">✈ SkyRoute</span>
+    <div class="nav-right">
+      <span class="user-name">{{ userName }}</span>
+      <span class="badge user">Passenger</span>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="content">
+
+    <!-- Flight Status Search -->
+    <section class="section search-section">
+      <h2>Check Flight Status</h2>
+      <p class="section-sub">Enter a flight number and date to check real-time status.</p>
+      <app-search-form (search)="onSearch($event)"></app-search-form>
+      <div class="search-error" *ngIf="searchError">{{ searchError }}</div>
+      <app-result-card *ngIf="searchResult" [result]="searchResult"></app-result-card>
+    </section>
+
+    <!-- Success toast -->
+    <div class="success-toast" *ngIf="bookingSuccess">✓ {{ bookingSuccess }}</div>
+
+    <!-- Booking form panel -->
+    <div class="booking-panel" *ngIf="selectedFlight">
+      <div class="booking-panel-header">
+        <h3>Book <strong>{{ selectedFlight.flightNumber }}</strong> — {{ selectedFlight.route }}</h3>
+        <button class="close-btn" (click)="cancelSelection()">✕</button>
+      </div>
+      <div class="route-info">
+        <span class="iata">{{ selectedFlight.origin }}</span>
+        <span class="arrow">→</span>
+        <span class="iata">{{ selectedFlight.destination }}</span>
+      </div>
+      <form [formGroup]="bookingForm" (ngSubmit)="bookFlight()">
+        <label>Travel Date</label>
+        <input type="date" formControlName="travelDate"
+          [class.invalid]="bookingForm.get('travelDate')!.touched && bookingForm.get('travelDate')!.invalid" />
+        <div class="err" *ngIf="bookingError">{{ bookingError }}</div>
+        <div class="panel-actions">
+          <button type="submit" class="confirm-btn" [disabled]="bookingLoading">
+            {{ bookingLoading ? 'Booking…' : 'Confirm Booking' }}
+          </button>
+          <button type="button" class="cancel-btn" (click)="cancelSelection()">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Available Flights -->
+    <section class="section">
+      <h2>Available Flights</h2>
+      <div *ngIf="loadingFlights" class="loading">Loading flights…</div>
+      <table *ngIf="!loadingFlights && flights.length > 0">
+        <thead>
+          <tr><th>Flight</th><th>Route</th><th>From</th><th>To</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of flights" [class.selected-row]="selectedFlight?.flightNumber === f.flightNumber">
+            <td><strong>{{ f.flightNumber }}</strong></td>
+            <td>{{ f.route }}</td>
+            <td><span class="iata-chip">{{ f.origin }}</span></td>
+            <td><span class="iata-chip">{{ f.destination }}</span></td>
+            <td>
+              <button class="book-btn" (click)="selectFlight(f)"
+                [class.active]="selectedFlight?.flightNumber === f.flightNumber">
+                {{ selectedFlight?.flightNumber === f.flightNumber ? 'Selected' : 'Book' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- My Bookings -->
+    <section class="section">
+      <div class="section-hdr">
+        <h2>My Bookings</h2>
+        <span class="count" *ngIf="myBookings.length > 0">{{ myBookings.length }} total</span>
+      </div>
+      <div *ngIf="loadingBookings" class="loading">Loading your bookings…</div>
+      <div *ngIf="!loadingBookings && myBookings.length === 0" class="empty">
+        No bookings yet. Select a flight above to get started!
+      </div>
+      <table *ngIf="!loadingBookings && myBookings.length > 0">
+        <thead>
+          <tr>
+            <th>#</th><th>Flight</th><th>Route</th><th>From &#8594; To</th>
+            <th>Travel Date</th><th>Booked At</th><th>Live Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let b of paginatedMyBookings; let i = index">
+            <!-- Booking row -->
+            <tr [class.expanded]="isExpanded(b.id)">
+              <td>{{ (myBookingsPage - 1) * myBookingsPageSize + i + 1 }}</td>
+              <td><strong>{{ b.flightNumber }}</strong></td>
+              <td>{{ b.route }}</td>
+              <td>{{ b.origin }} &#8594; {{ b.destination }}</td>
+              <td>{{ b.travelDate }}</td>
+              <td>{{ b.bookedAtUtc | date:'short' }}</td>
+              <td>
+                <button class="status-btn" (click)="toggleBookingStatus(b)">
+                  <span *ngIf="!isExpanded(b.id)">&#x1F50D; Check Status</span>
+                  <span *ngIf="isExpanded(b.id)">&#x25B2; Hide</span>
+                </button>
+              </td>
+            </tr>
+            <!-- Inline status detail row -->
+            <tr *ngIf="isExpanded(b.id)" class="status-detail-row">
+              <td colspan="7">
+                <div *ngIf="bookingStatus(b.id)?.loading" class="bs-loading">
+                  <span class="spinner-sm"></span> Loading flight status…
+                </div>
+                <div *ngIf="bookingStatus(b.id)?.error" class="bs-error">
+                  {{ bookingStatus(b.id)?.error }}
+                </div>
+                <div *ngIf="bookingStatus(b.id)?.result as r" class="bs-result">
+                  <span class="bs-badge" [ngClass]="statusClass(r.status)">
+                    {{ statusLabel(r.status) }}
+                  </span>
+                  <span class="bs-chip" *ngIf="r.terminal">Terminal: <strong>{{ r.terminal }}</strong></span>
+                  <span class="bs-chip" *ngIf="r.gate">Gate: <strong>{{ r.gate }}</strong></span>
+                  <span class="bs-dep" *ngIf="r.scheduledDeparture">
+                    Departs {{ r.scheduledDeparture | date:'HH:mm':'UTC' }} UTC
+                    <ng-container *ngIf="r.actualDeparture">
+                      &bull; Actual {{ r.actualDeparture | date:'HH:mm':'UTC' }} UTC
+                    </ng-container>
+                  </span>
+                  <span class="bs-reason" *ngIf="r.delayReason">Delay: {{ r.delayReason }}</span>
+                  <span class="bs-unknown-msg" *ngIf="r.status === 'Unknown'">{{ r.message }}</span>
+                  <span class="bs-source">via {{ r.sourceProvider }}</span>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+      <div class="pagination" *ngIf="totalMyBookingPages > 1">
+        <button [disabled]="myBookingsPage === 1" (click)="myBookingsPage = myBookingsPage - 1">&#9664; Prev</button>
+        <span>Page {{ myBookingsPage }} of {{ totalMyBookingPages }}</span>
+        <button [disabled]="myBookingsPage === totalMyBookingPages" (click)="myBookingsPage = myBookingsPage + 1">Next &#9654;</button>
+      </div>
+    </section>
+  </div>
+</div>

@@ -1,12 +1,14 @@
-<form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-  <div class="form-row">
+<form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="search-form">
+  <div class="form-grid">
     <div class="field">
-      <label for="flightNumber">Flight Number</label>
+      <label for="flightNumber">
+        <span class="label-icon">&#x2708;</span> Flight Number
+      </label>
       <input
         id="flightNumber"
         type="text"
         formControlName="flightNumber"
-        placeholder="e.g. BA123"
+        placeholder="e.g. AA123"
         autocomplete="off"
         [class.invalid]="flightNumber.invalid && flightNumber.touched"
       />
@@ -14,12 +16,14 @@
         Flight number is required.
       </span>
       <span class="error" *ngIf="flightNumber.touched && flightNumber.hasError('pattern')">
-        Enter a valid flight number (e.g. BA123).
+        Enter a valid flight number (e.g. AA123).
       </span>
     </div>
 
     <div class="field">
-      <label for="date">Date</label>
+      <label for="date">
+        <span class="label-icon">&#x1F4C5;</span> Travel Date
+      </label>
       <input
         id="date"
         type="date"
@@ -30,10 +34,11 @@
         Date is required.
       </span>
     </div>
-
-    <button type="submit" [disabled]="loading">
-      <span *ngIf="loading" class="spinner"></span>
-      {{ loading ? 'Searching…' : 'Search' }}
-    </button>
   </div>
+
+  <button type="submit" [disabled]="loading">
+    <span *ngIf="loading" class="spinner"></span>
+    <span *ngIf="!loading" class="btn-icon">&#x1F50D;</span>
+    {{ loading ? 'Searching&#x2026;' : 'Search Flight' }}
+  </button>
 </form>

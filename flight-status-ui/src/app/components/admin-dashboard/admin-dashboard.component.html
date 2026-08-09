@@ -1,0 +1,49 @@
+<div class="dashboard">
+  <nav class="navbar">
+    <span class="brand">✈ SkyRoute</span>
+    <div class="nav-right">
+      <span class="user-name">{{ userName }}</span>
+      <span class="badge admin">Administrator</span>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="content">
+    <app-search-form (search)="onSearch($event)"></app-search-form>
+    <div id="detail-anchor"></div>
+    <div class="error-banner" *ngIf="errorMessage">{{ errorMessage }}</div>
+    <app-result-card *ngIf="result" [result]="result"></app-result-card>
+
+    <app-flight-list (selectFlight)="onSelectFlight($event)"></app-flight-list>
+
+    <section class="bookings-section">
+      <div class="section-hdr">
+        <h2>All Passenger Bookings</h2>
+        <span class="count" *ngIf="allBookings.length > 0">{{ allBookings.length }} total</span>
+      </div>
+      <div *ngIf="loadingBookings" class="loading">Loading bookings…</div>
+      <div *ngIf="!loadingBookings && allBookings.length === 0" class="empty">No bookings yet.</div>
+      <table *ngIf="allBookings.length > 0">
+        <thead>
+          <tr><th>#</th><th>Flight</th><th>Route</th><th>Travel Date</th><th>Passenger</th><th>Email</th><th>Booked At</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of paginatedBookings; let i = index">
+            <td>{{ (bookingsPage - 1) * bookingsPageSize + i + 1 }}</td>
+            <td><strong>{{ b.flightNumber }}</strong></td>
+            <td>{{ b.route }}</td>
+            <td>{{ b.travelDate }}</td>
+            <td>{{ b.userFullName }}</td>
+            <td>{{ b.userEmail }}</td>
+            <td>{{ b.bookedAtUtc | date:'short' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pagination" *ngIf="totalBookingPages > 1">
+        <button [disabled]="bookingsPage === 1" (click)="bookingsPage = bookingsPage - 1">&#9664; Prev</button>
+        <span>Page {{ bookingsPage }} of {{ totalBookingPages }}</span>
+        <button [disabled]="bookingsPage === totalBookingPages" (click)="bookingsPage = bookingsPage + 1">Next &#9654;</button>
+      </div>
+    </section>
+  </div>
+</div>

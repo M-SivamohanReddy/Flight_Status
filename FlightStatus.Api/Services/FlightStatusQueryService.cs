@@ -1,24 +1,24 @@
 using FlightStatus.Api.Models;
 using FlightStatus.Api.Providers;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace FlightStatus.Api.Services;
 
-/// <summary>
-/// Queries all registered providers concurrently, normalises their responses,
-/// and applies the merge rules to return a single FlightStatusResult.
-/// </summary>
 public sealed class FlightStatusQueryService
 {
     private readonly IEnumerable<IFlightStatusProvider> _providers;
     private readonly ILogger<FlightStatusQueryService> _logger;
+    private readonly IMemoryCache _cache;
 
     public FlightStatusQueryService(
         IEnumerable<IFlightStatusProvider> providers,
-        ILogger<FlightStatusQueryService> logger)
+        ILogger<FlightStatusQueryService> logger,
+        IMemoryCache cache)
     {
         _providers = providers;
-        _logger = logger;
+        _logger    = logger;
+        _cache     = cache;
     }
 
     public async Task<FlightStatusResult> GetStatusAsync(
@@ -26,16 +26,27 @@ public sealed class FlightStatusQueryService
         DateOnly date,
         CancellationToken cancellationToken = default)
     {
-        var tasks = _providers.Select(p => FetchSafeAsync(p, flightNumber, date, cancellationToken));
-        var results = await Task.WhenAll(tasks);
-        var valid = results.Where(r => r is not null).Select(r => r!).ToList();
+        // Cache per flight+date for 60 s to avoid redundant provider round-trips
+        var cacheKey = $"fstatus:{flightNumber}:{date:yyyyMMdd}";
+        if (_cache.TryGetValue(cacheKey, out FlightStatusResult? hit)) return hit!;
 
-        return valid.Count switch
+        var tasks   = _providers.Select(p => FetchSafeAsync(p, flightNumber, date, cancellationToken));
+        var results = await Task.WhenAll(tasks);
+        var valid   = results.Where(r => r is not null).Select(r => r!).ToList();
+
+        var result = valid.Count switch
         {
             0 => BuildUnknown(flightNumber, date),
             1 => BuildResult(valid[0], date),
             _ => BuildResult(SelectWinner(valid), date)
         };
+
+        _cache.Set(cacheKey, result, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60),
+            SlidingExpiration               = TimeSpan.FromSeconds(30)
+        });
+        return result;
     }
 
     private async Task<ProviderFlightStatus?> FetchSafeAsync(

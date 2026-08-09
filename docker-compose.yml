@@ -1,0 +1,45 @@
+services:
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "SkyRoute@Dev2026!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'SkyRoute@Dev2026!' -Q 'SELECT 1'"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: ./FlightStatus.Api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      ConnectionStrings__FlightStatusDb: "Server=db;Database=FlightStatusDb;User Id=sa;Password=SkyRoute@Dev2026!;TrustServerCertificate=true"
+      JwtSettings__Secret: "SkyRoute-JWT-SuperSecret-Key-2026-AtLeast32Chars!"
+      JwtSettings__Issuer: "FlightStatus.Api"
+      JwtSettings__Audience: "FlightStatus.Client"
+      JwtSettings__ExpiryMinutes: "60"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ui:
+    build:
+      context: ./flight-status-ui
+      dockerfile: Dockerfile
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+
+volumes:
+  sqldata:

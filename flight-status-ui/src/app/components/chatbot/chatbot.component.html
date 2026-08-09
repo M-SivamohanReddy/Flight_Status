@@ -1,0 +1,99 @@
+<div class="chatbot-wrap">
+
+  <!-- Chat window -->
+  <div class="chat-window" [class.open]="isOpen">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="avatar">✈</div>
+      <div class="header-text">
+        <div class="bot-name">SkyRoute Assistant</div>
+        <div class="bot-sub">MCP-powered · ask anything</div>
+      </div>
+      <button class="close-btn" (click)="toggle()">✕</button>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages" #msgArea>
+      <ng-container *ngFor="let m of messages">
+        <div [class]="'msg ' + m.role">
+          <div class="bubble" [class.loading-bubble]="m.loading">
+
+            <!-- Loading dots -->
+            <div *ngIf="m.loading" class="dots">
+              <span></span><span></span><span></span>
+            </div>
+
+            <!-- Text / Error -->
+            <div *ngIf="!m.loading && (m.type === 'text' || m.type === 'error')"
+                 class="msg-text" [class.err]="m.type === 'error'"
+                 [innerHTML]="m.html"></div>
+
+            <!-- Flight list -->
+            <ng-container *ngIf="!m.loading && m.type === 'flights'">
+              <div class="msg-text" [innerHTML]="m.html"></div>
+              <div class="flight-grid">
+                <button *ngFor="let f of m.flights" class="flight-chip" (click)="checkFlight(f.flightNumber)">
+                  <strong class="fn">{{ f.flightNumber }}</strong>
+                  <span class="route">{{ f.route }}</span>
+                  <span class="iatas">{{ f.origin }}&#8594;{{ f.destination }}</span>
+                </button>
+              </div>
+            </ng-container>
+
+            <!-- Status mini-card -->
+            <ng-container *ngIf="!m.loading && m.type === 'status' && m.status as s">
+              <div class="msg-text" [innerHTML]="m.html"></div>
+              <div class="status-card" [ngClass]="getStatusClass(s.status)">
+                <div class="sc-banner">
+                  <span class="sc-icon">{{ getStatusIcon(s.status) }}</span>
+                  <strong>{{ getStatusLabel(s.status) }}</strong>
+                </div>
+                <div class="sc-body">
+                  <div *ngIf="s.terminal || s.gate" class="sc-chips">
+                    <span *ngIf="s.terminal" class="sc-chip t-chip">T {{ s.terminal }}</span>
+                    <span *ngIf="s.gate"     class="sc-chip g-chip">Gate {{ s.gate }}</span>
+                  </div>
+                  <div class="sc-row" *ngIf="s.scheduledDeparture">
+                    <span class="sc-lbl">Departs</span>
+                    <span>{{ fmtTime(s.scheduledDeparture) }}
+                      <span *ngIf="s.actualDeparture" class="sc-actual">→ {{ fmtTime(s.actualDeparture) }}</span>
+                    </span>
+                  </div>
+                  <div class="sc-row delay" *ngIf="s.delayReason">
+                    <span>&#x26A0;</span><span>{{ s.delayReason }}</span>
+                  </div>
+                  <div class="sc-unknown" *ngIf="s.message">{{ s.message }}</div>
+                  <div class="sc-src">via {{ s.sourceProvider }}</div>
+                </div>
+              </div>
+            </ng-container>
+
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- Quick suggestions (shown only at start) -->
+    <div class="suggestions" *ngIf="messages.length <= 1">
+      <button *ngFor="let s of suggestions" class="sug" (click)="useSuggestion(s)">{{ s }}</button>
+    </div>
+
+    <!-- Input row -->
+    <div class="input-row">
+      <input class="chat-input" [(ngModel)]="userInput"
+             (keydown.enter)="send()"
+             placeholder="Ask about flights…"
+             autocomplete="off" />
+      <button class="send-btn" (click)="send()">&#x27A4;</button>
+    </div>
+
+  </div>
+
+  <!-- Floating toggle button -->
+  <button class="toggle-btn" [class.open]="isOpen" (click)="toggle()">
+    <span *ngIf="!isOpen">&#x1F4AC;</span>
+    <span *ngIf="isOpen">&#x2715;</span>
+  </button>
+
+</div>

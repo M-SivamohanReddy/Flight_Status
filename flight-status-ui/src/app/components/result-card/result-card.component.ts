@@ -32,12 +32,35 @@ export class ResultCardComponent {
     }
   }
 
+  get statusIcon(): string {
+    switch (this.result.status) {
+      case 'OnTime':    return '\u2705';
+      case 'Delayed':   return '\u23F0';
+      case 'Cancelled': return '\u274C';
+      case 'Diverted':  return '\u2197\uFE0F';
+      default:          return '\u2753';
+    }
+  }
+
+  get isDepartureLate(): boolean {
+    if (!this.result.scheduledDeparture || !this.result.actualDeparture) return false;
+    const delta = new Date(this.result.actualDeparture).getTime() -
+                  new Date(this.result.scheduledDeparture).getTime();
+    return delta > 15 * 60 * 1000;
+  }
+
+  formatTime(iso: string | null): string {
+    if (!iso) return '';
+    return new Date(iso).toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+    });
+  }
+
+  // kept for backward-compat if anything still calls it
   formatDateTime(iso: string | null): string {
-    if (!iso) return 'â€”';
+    if (!iso) return '—';
     return new Date(iso).toLocaleString(undefined, {
-      dateStyle: 'short',
-      timeStyle: 'short',
-      timeZone: 'UTC'
+      dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC'
     }) + ' UTC';
   }
 }

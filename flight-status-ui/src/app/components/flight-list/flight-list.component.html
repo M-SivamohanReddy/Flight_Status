@@ -1,0 +1,136 @@
+<section class="fleet-section">
+  <div class="fleet-header">
+    <div class="header-left">
+      <h2>Fleet Status &#8212; {{ today }}</h2>
+      <p class="hint">Click any flight to view full details</p>
+    </div>
+    <div class="header-right">
+      <span class="filter-count" *ngIf="activeFilterCount > 0">
+        {{ filteredRows.length }} / {{ rows.length }} flights
+      </span>
+      <button class="clear-btn" *ngIf="activeFilterCount > 0" (click)="clearFilters()">
+        &#x2715; Clear filters ({{ activeFilterCount }})
+      </button>
+    </div>
+  </div>
+
+  <div class="catalog-loading" *ngIf="catalogLoading">
+    <span class="loading-dot"></span>
+    <span class="loading-dot"></span>
+    <span class="loading-dot"></span>
+    <span class="catalog-msg">Loading flight catalogue from API&hellip;</span>
+  </div>
+
+  <div class="catalog-error" *ngIf="catalogError">
+    Could not load flights from the API. Make sure the backend is running on http://localhost:5000.
+  </div>
+
+  <ng-container *ngIf="!catalogLoading && !catalogError">
+    <div class="legend">
+      <span class="legend-pill status-on-time">On Time</span>
+      <span class="legend-pill status-delayed">Delayed</span>
+      <span class="legend-pill status-cancelled">Cancelled</span>
+      <span class="legend-pill status-diverted">Diverted</span>
+      <span class="legend-pill status-unknown">Unknown</span>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr class="heading-row">
+            <th class="col-stripe"></th>
+            <th>Flight</th>
+            <th>Route</th>
+            <th>From &#8594; To</th>
+            <th>Status</th>
+            <th>Sched. Dep.</th>
+            <th>Actual Dep.</th>
+            <th>Terminal</th>
+            <th>Gate</th>
+            <th>Delay Reason</th>
+          </tr>
+          <tr class="filter-row">
+            <th class="col-stripe"></th>
+            <th>
+              <input class="filter-input" type="text" placeholder="Flight&hellip;"
+                [(ngModel)]="filters.flightNumber" (click)="$event.stopPropagation()" />
+            </th>
+            <th>
+              <input class="filter-input" type="text" placeholder="Route&hellip;"
+                [(ngModel)]="filters.route" (click)="$event.stopPropagation()" />
+            </th>
+            <th></th>
+            <th>
+              <select class="filter-select" [(ngModel)]="filters.status" (click)="$event.stopPropagation()">
+                <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </th>
+            <th></th>
+            <th></th>
+            <th>
+              <select class="filter-select" [(ngModel)]="filters.terminal" (click)="$event.stopPropagation()">
+                <option value="">All</option>
+                <option *ngFor="let t of terminalOptions.slice(1)" [value]="t">{{ t }}</option>
+              </select>
+            </th>
+            <th>
+              <input class="filter-input" type="text" placeholder="Gate&hellip;"
+                [(ngModel)]="filters.gate" (click)="$event.stopPropagation()" />
+            </th>
+            <th>
+              <input class="filter-input" type="text" placeholder="Reason&hellip;"
+                [(ngModel)]="filters.delayReason" (click)="$event.stopPropagation()" />
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let row of filteredRows"
+            [ngClass]="['row', statusClass(row.result?.status)]"
+            (click)="onRowClick(row)"
+            tabindex="0"
+            (keydown.enter)="onRowClick(row)"
+            role="button"
+            [attr.aria-label]="'View details for ' + row.meta.flightNumber"
+          >
+            <td class="col-stripe">
+              <span class="stripe" [ngClass]="statusClass(row.result?.status)"></span>
+            </td>
+            <td class="col-flight">
+              <span class="flight-code">{{ row.meta.flightNumber }}</span>
+            </td>
+            <td class="col-route">{{ row.meta.route }}</td>
+            <td class="col-iata">
+              <span class="iata">{{ row.meta.origin }}</span>
+              <span class="arrow">&#8594;</span>
+              <span class="iata">{{ row.meta.destination }}</span>
+            </td>
+            <td class="col-badge">
+              <span *ngIf="row.loading" class="loading-dot"></span>
+              <span *ngIf="!row.loading" class="badge" [ngClass]="statusClass(row.result?.status)">
+                {{ statusLabel(row.result?.status) }}
+              </span>
+            </td>
+            <td>{{ formatTime(row.result?.scheduledDeparture) }}</td>
+            <td>{{ formatTime(row.result?.actualDeparture) }}</td>
+            <td>
+              <span *ngIf="row.result?.terminal" class="chip">{{ row.result?.terminal }}</span>
+              <span *ngIf="!row.result?.terminal" class="muted">&#8212;</span>
+            </td>
+            <td>
+              <span *ngIf="row.result?.gate" class="chip">{{ row.result?.gate }}</span>
+              <span *ngIf="!row.result?.gate" class="muted">&#8212;</span>
+            </td>
+            <td class="col-reason">
+              <span *ngIf="row.result?.delayReason" class="delay-text">{{ row.result?.delayReason }}</span>
+              <span *ngIf="!row.result?.delayReason" class="muted">&#8212;</span>
+            </td>
+          </tr>
+          <tr *ngIf="filteredRows.length === 0" class="empty-row">
+            <td colspan="10">No flights match the current filters.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</section>

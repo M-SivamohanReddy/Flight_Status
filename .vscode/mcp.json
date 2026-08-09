@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "skyroute-flight-status": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"],
+      "cwd": "${workspaceFolder}/flight-status-mcp",
+      "env": {
+        "FLIGHT_API_URL": "http://localhost:5000"
+      }
+    }
+  }
+}
