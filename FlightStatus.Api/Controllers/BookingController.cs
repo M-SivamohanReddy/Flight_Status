@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using FlightStatus.Api.CQRS.Commands.Bookings;
+using FlightStatus.Api.CQRS.Queries.Bookings;
 using FlightStatus.Api.Models;
-using FlightStatus.Api.Services.Interfaces;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,9 +11,7 @@ namespace FlightStatus.Api.Controllers;
 [ApiController]
 [Route("bookings")]
 [Authorize]
-public sealed class BookingController(
-    IBookingService bookingService,
-    ILogger<BookingController> logger) : ControllerBase
+public sealed class BookingController(IMediator mediator, ILogger<BookingController> logger) : ControllerBase
 {
     [HttpPost]
     [Authorize(Roles = "User")]
@@ -21,8 +21,8 @@ public sealed class BookingController(
         if (userId is null) return Unauthorized();
 
         logger.LogInformation("Booking {FlightNumber} for user {UserId}", request.FlightNumber, userId);
-
-        var booking = await bookingService.BookAsync(userId, request, ct);
+        var booking = await mediator.Send(
+            new CreateBookingCommand(userId, request.FlightNumber, request.TravelDate), ct);
         return Created($"/bookings/{booking.Id}", booking);
     }
 
@@ -33,6 +33,6 @@ public sealed class BookingController(
         if (userId is null) return Unauthorized();
 
         logger.LogInformation("My bookings requested by user {UserId}", userId);
-        return Ok(await bookingService.GetMyBookingsAsync(userId, ct));
+        return Ok(await mediator.Send(new GetMyBookingsQuery(userId), ct));
     }
 }

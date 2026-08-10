@@ -123,5 +123,8 @@ public static class ServiceRegistration
         services.AddScoped<IFlightStatusQueryService,  FlightStatusQueryService>();
         services.AddScoped<IAuthService,               AuthService>();
         services.AddScoped<IBookingService,            BookingService>();
+
+        // MediatR: auto-discovers all IRequestHandler<,> implementations in this assembly
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
     }
 }

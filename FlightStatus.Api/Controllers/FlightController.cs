@@ -1,28 +1,26 @@
 using System.Text.RegularExpressions;
-using FlightStatus.Api.Services.Interfaces;
+using FlightStatus.Api.CQRS.Queries.Flights;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlightStatus.Api.Controllers;
 
 [ApiController]
 [Route("flights")]
-public sealed class FlightController(
-    IFlightCatalogService catalogService,
-    IFlightStatusQueryService queryService,
-    ILogger<FlightController> logger) : ControllerBase
+public sealed class FlightController(IMediator mediator, ILogger<FlightController> logger) : ControllerBase
 {
     private static readonly Regex FlightNumberPattern =
         new(@"^[A-Za-z]{2,3}\d{1,4}$", RegexOptions.Compiled);
 
-    /// <summary>GET /flights — public, no auth required.</summary>
+    // public -- catalog needed by the MCP chatbot without credentials
     [HttpGet]
     public async Task<IActionResult> GetCatalog(CancellationToken ct)
     {
         logger.LogInformation("Flight catalog requested");
-        return Ok(await catalogService.GetAllAsync(ct));
+        return Ok(await mediator.Send(new GetFlightCatalogQuery(), ct));
     }
 
-    /// <summary>GET /flights/status — public, no auth required.</summary>
+    // public -- flight status available without login
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus(
         [FromQuery] string? flightNumber,
@@ -45,12 +43,9 @@ public sealed class FlightController(
             return BadRequest(new { errors });
 
         logger.LogInformation("Status query: {FlightNumber} on {Date}", flightNumber, date);
-
-        var result = await queryService.GetStatusAsync(
-            flightNumber!.ToUpperInvariant(),
-            DateOnly.ParseExact(date!, "yyyy-MM-dd"),
-            ct);
-
-        return Ok(result);
+        return Ok(await mediator.Send(
+            new GetFlightStatusQuery(
+                flightNumber!.ToUpperInvariant(),
+                DateOnly.ParseExact(date!, "yyyy-MM-dd")), ct));
     }
 }
