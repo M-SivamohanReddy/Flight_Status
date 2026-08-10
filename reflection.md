@@ -14,9 +14,12 @@ Beyond the specified scope, the following was added:
 | IMemoryCache (60 s TTL per flight+date) | Prevents redundant provider round-trips on the fleet board |
 | Client-side pagination (5 rows/page) | Practical UX for tables with many rows |
 | Idempotent SeedDelta() | New stub scenarios can be added without dropping existing data |
-| MCP server (list_flights + check_flight_status tools) | Makes SkyRoute queryable from Claude Desktop / Copilot Agent |
+| MCP server — initially Node.js, migrated to .NET | `FlightMcpTools.cs` hosted in ASP.NET Core via SSE at `/mcp`; injects `IFlightCatalogService` directly — no separate process or HTTP round-trip |
 | Floating chatbot widget (natural language) | In-app search without navigating to a form |
 | Docker Compose | One-command startup for reviewers without a .NET or Node environment |
+| Layered architecture — Controllers / Services / Repositories with interfaces | `IController`, `IAuthService`, `IFlightStatusQueryService`, `IBookingService`, `IFlightCatalogService`; auto-discovered endpoint registration via `MapControllers()` |
+| GlobalExceptionHandler | Single reusable try-catch via `IExceptionHandler`; controllers log requests and let exceptions propagate cleanly |
+| Angular feature modules (lazy loading) | `features/admin` and `features/user` are lazy-loaded chunks; shared components in `shared/components/` |
 
 ---
 

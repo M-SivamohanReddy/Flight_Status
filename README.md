@@ -10,7 +10,7 @@ A support agent enters a flight number and date; the system queries two stub pro
 | Tool | Minimum | Notes |
 |------|---------|-------|
 | .NET SDK | 10.0 | [download](https://dotnet.microsoft.com/download) |
-| Node.js | 18+ | [download](https://nodejs.org/) |
+| Node.js | 18+ | Angular CLI only — not needed for MCP |
 | Angular CLI | 18+ | `npm install -g @angular/cli` |
 | SQL Server LocalDB | Any | Ships with Visual Studio; standalone: [download](https://aka.ms/sqllocaldb) |
 
@@ -24,7 +24,7 @@ If missing: `SqlLocalDB create MSSQLLocalDB`
 
 ## Quick Start
 
-Open **three terminals** from the repo root.
+Open **two terminals** from the repo root.
 
 ### Terminal 1 — API
 ```bash
@@ -36,6 +36,8 @@ First run automatically:
 2. Creates all tables (Identity, FlightCatalog, FlightProviderData, FlightBookings)
 3. Seeds 14 flights, 2 roles, and 2 demo accounts
 
+The MCP SSE endpoint is also available at `http://localhost:5000/mcp` — no separate server needed.
+
 ### Terminal 2 — Angular UI
 ```bash
 cd flight-status-ui
@@ -44,7 +46,7 @@ ng serve --port 4200
 ```
 Open **http://localhost:4200**
 
-### Terminal 3 — Tests
+### Run the tests
 ```bash
 cd FlightStatus.Tests
 dotnet test
@@ -114,23 +116,25 @@ flight-status/
 |   |   |-- FlightStatusDbContext.cs   # Extends IdentityDbContext<ApplicationUser>
 |   |   |-- DatabaseSeeder.cs          # First-run seed + idempotent SeedDelta()
 |   |   +-- IdentitySeeder.cs          # Seeds Admin + User roles and 2 demo accounts
+|   |-- Controllers/       # AuthController, FlightController, BookingController, AdminController
+|   |                      #   each implements IController with [ApiController] attribute routing
+|   |-- Configuration/     # ServiceRegistration, PipelineConfiguration, DatabaseInitialiser
+|   |-- Infrastructure/    # GlobalExceptionHandler, FlightMcpTools (3 MCP tools via SSE)
 |   |-- Models/            # FlightStatus enum, FlightStatusResult, BookingModels, AuthModels
 |   |-- Providers/         # IFlightStatusProvider + two DI-injected stub implementations
 |   +-- Services/          # StatusNormaliser, FlightStatusQueryService, AuthService,
-|                          #   BookingService, FlightCatalogService
+|                          #   BookingService, FlightCatalogService (all with interfaces)
 |
 |-- FlightStatus.Tests/    # xUnit — 21 meaningful tests (normalisation + merge logic)
 |
 |-- flight-status-ui/      # Angular 18 standalone application
 |   +-- src/app/
-|       |-- components/    # landing, login, register, admin-dashboard, user-dashboard,
-|       |                  #   search-form, result-card, flight-list, chatbot
+|       |-- components/    # landing, login, register (page-level, not lazy-loaded)
+|       |-- features/      # admin/ and user/ — lazy-loaded feature modules
+|       |-- shared/        # search-form, result-card, chatbot (reused across features)
 |       |-- services/      # AuthService, FlightStatusService, BookingService
 |       |-- guards/        # authGuard, adminGuard, userGuard (functional, Angular 18+)
 |       +-- interceptors/  # jwtInterceptor: attaches Bearer token, redirects on 401
-|
-|-- flight-status-mcp/     # MCP server (Node.js/TypeScript)
-|   +-- src/index.ts       # Exposes list_flights + check_flight_status tools via stdio
 |
 +-- docker-compose.yml     # One-command: SQL Server + API + Angular (nginx)
 ```
@@ -148,29 +152,32 @@ flight-status/
 | POST | `/bookings` | User role | Create a booking |
 | GET | `/bookings/my` | Authenticated | Caller's own bookings |
 | GET | `/admin/bookings` | Admin role | All passenger bookings |
+| GET/POST | `/mcp` | None | MCP SSE endpoint for AI agents (Claude Desktop, Copilot Agent) |
 
 **Returns 400** when `flightNumber` or `date` is missing or fails validation.  
 **Returns 200 with `status: "Unknown"`** when no provider has data — never a 404 for missing flights.
 
 ---
 
-## MCP Server (optional)
+## MCP Server
 
-Exposes flight tools to AI agents (Claude Desktop, GitHub Copilot Agent, etc.).
+MCP tools are hosted **directly inside the .NET API** — no separate Node.js server required.
 
-```bash
-cd flight-status-mcp
-npm install
-npm run dev          # stdio transport
-```
+The endpoint is live at `http://localhost:5000/mcp` whenever the API is running.
 
-The `.vscode/mcp.json` is pre-configured — Copilot Agent picks it up automatically.
+The `.vscode/mcp.json` is pre-configured with SSE transport — GitHub Copilot Agent
+picks it up automatically when you open the workspace.
 
-Try in GitHub Copilot Agent chat:
+Try in **GitHub Copilot Agent** (Agent mode → `@workspace`) or **Claude Desktop**:
 ```
 List all SkyRoute flights
 What is the status of AA200?
+Find flights from London
 ```
+
+The three tools are implemented in `FlightStatus.Api/Infrastructure/FlightMcpTools.cs`
+and inject `IFlightCatalogService` and `IFlightStatusQueryService` directly —
+no HTTP round-trip to another process.
 
 ---
 
@@ -192,4 +199,4 @@ Full rationale in [spec.md](spec.md). Summary:
 3. **Winner-takes-all merge** — the provider with the later `lastUpdatedUtc` supplies all fields. No field-level blending.
 4. **AeroTrack tie-break** — equal timestamps favour AeroTrack (it carries terminal, gate, delay reason).
 5. **Provider exceptions are silent** — treated as no-data, never surfaced to the API caller.
-6. **Beyond-spec additions** — Identity + JWT auth, LocalDB persistence, bookings, `IMemoryCache` (60 s TTL), pagination, MCP chatbot, and Docker Compose go beyond "no auth or persistence". The core challenge requirements are fully met independently of these additions.
+6. **Beyond-spec additions** — Identity + JWT auth, LocalDB persistence, bookings, `IMemoryCache` (60 s TTL), pagination, MCP tools (hosted in .NET via SSE, no Node.js), floating chatbot, Docker Compose, layered architecture (Controllers / Services / Repositories with interfaces), and GlobalExceptionHandler go beyond "no auth or persistence". The core challenge requirements are fully met independently of these additions.
