@@ -17,6 +17,9 @@ public static class PipelineConfiguration
         // Discovers all [ApiController] classes and maps their [Http*] attribute routes
         app.MapControllers();
 
+        // MCP SSE endpoint — Claude Desktop / VS Code Agent connects here
+        app.MapMcp("/mcp");
+
         return app;
     }
 }

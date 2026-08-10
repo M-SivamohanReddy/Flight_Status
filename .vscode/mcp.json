@@ -1,13 +1,9 @@
 {
   "servers": {
     "skyroute-flight-status": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["tsx", "src/index.ts"],
-      "cwd": "${workspaceFolder}/flight-status-mcp",
-      "env": {
-        "FLIGHT_API_URL": "http://localhost:5000"
-      }
+      "type": "sse",
+      "url": "http://localhost:5000/mcp",
+      "description": "SkyRoute flight status MCP tools hosted inside the .NET API (no Node.js required)"
     }
   }
 }

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using ModelContextProtocol.AspNetCore;
 
 namespace FlightStatus.Api.Configuration;
 
@@ -37,6 +38,11 @@ public static class ServiceRegistration
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
         services.AddMemoryCache();
+
+        // MCP server: tools inject services directly — no HTTP round-trip needed
+        services.AddMcpServer()
+                .WithHttpTransport()
+                .WithTools<FlightMcpTools>();
         services.AddOpenApi();
         services.AddCors(opts =>
             opts.AddDefaultPolicy(p =>
