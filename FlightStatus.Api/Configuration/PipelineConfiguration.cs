@@ -1,12 +1,11 @@
+using FlightStatus.Api.Infrastructure;
+
 namespace FlightStatus.Api.Configuration;
 
 public static class PipelineConfiguration
 {
     public static WebApplication UseFlightStatusPipeline(this WebApplication app)
     {
-        // GlobalExceptionHandler is the single reusable try-catch for all controllers
-        app.UseExceptionHandler();
-
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -18,6 +17,11 @@ public static class PipelineConfiguration
         }
 
         app.UseCors();
+
+        // Explicit UseRouting so RequestPipelineMiddleware can call GetEndpoint()
+        app.UseRouting();
+        app.UseMiddleware<RequestPipelineMiddleware>();
+
         app.UseAuthentication();
         app.UseAuthorization();
 

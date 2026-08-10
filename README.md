@@ -51,7 +51,7 @@ Open **http://localhost:4200**
 cd FlightStatus.Tests
 dotnet test
 ```
-Expected output: **21 tests passing, 0 failed**
+Expected output: **38 tests passing, 0 failed**
 
 ---
 
@@ -118,8 +118,12 @@ flight-status/
 |   |   +-- IdentitySeeder.cs          # Seeds Admin + User roles and 2 demo accounts
 |   |-- Controllers/       # AuthController, FlightController, BookingController, AdminController
 |   |                      #   each implements IController with [ApiController] attribute routing
+|   |-- CQRS/
+|   |   |-- Commands/      # RegisterCommand, CreateBookingCommand (write-side MediatR handlers)
+|   |   +-- Queries/       # LoginQuery, GetFlightCatalogQuery, GetFlightStatusQuery,
+|   |                      #   GetMyBookingsQuery, GetAllBookingsQuery (read-side handlers)
 |   |-- Configuration/     # ServiceRegistration, PipelineConfiguration, DatabaseInitialiser
-|   |-- Infrastructure/    # GlobalExceptionHandler, FlightMcpTools (3 MCP tools via SSE)
+|   |-- Infrastructure/    # RequestPipelineMiddleware, FlightMcpTools (3 MCP tools via SSE)
 |   |-- Models/            # FlightStatus enum, FlightStatusResult, BookingModels, AuthModels
 |   |-- Providers/         # IFlightStatusProvider + two DI-injected stub implementations
 |   +-- Services/          # StatusNormaliser, FlightStatusQueryService, AuthService,
@@ -156,6 +160,73 @@ flight-status/
 
 **Returns 400** when `flightNumber` or `date` is missing or fails validation.  
 **Returns 200 with `status: "Unknown"`** when no provider has data — never a 404 for missing flights.
+
+---
+
+## Architecture Patterns
+
+### CQRS with MediatR
+
+All controller actions delegate to MediatR — controllers contain zero business logic.
+
+| Type | Handler | Operation |
+|------|---------|----------|
+| Query | `GetFlightCatalogQuery` | Returns all 14 flights from the catalog |
+| Query | `GetFlightStatusQuery` | Queries both providers, normalises and merges result |
+| Query | `LoginQuery` | Validates credentials, returns signed JWT |
+| Query | `GetMyBookingsQuery` | Returns bookings for the authenticated user |
+| Query | `GetAllBookingsQuery` | Returns all bookings (Admin only) |
+| Command | `RegisterCommand` | Creates user account, assigns User role |
+| Command | `CreateBookingCommand` | Creates a flight booking for the authenticated user |
+
+**Read path** — Queries are side-effect-free and go directly to repositories/providers.  
+**Write path** — Commands mutate state and return only the data the caller needs.
+
+```csharp
+// Controller stays thin — no logic, no try-catch
+[HttpGet]
+public async Task<IActionResult> GetCatalog(CancellationToken ct)
+    => Ok(await mediator.Send(new GetFlightCatalogQuery(), ct));
+```
+
+---
+
+### Custom Middleware — `RequestPipelineMiddleware`
+
+A single `IMiddleware` class registered in DI handles four cross-cutting concerns in one pass:
+
+| Step | What happens |
+|------|--------------|
+| **Request logging** | Logs method, path, query string, remote IP, User-Agent, and correlation ID |
+| **Endpoint existence** | `context.GetEndpoint()` — returns `404 ProblemDetails` immediately if no route matched |
+| **JWT structural guard** | For `[Authorize]` endpoints: checks `Authorization: Bearer <token>` is present and has three dot-separated segments; returns `401 ProblemDetails` on failure |
+| **Global error handling** | Wraps `next(context)` in try/catch; maps exception types to status codes and returns structured `ProblemDetails` |
+| **Response logging** | After pipeline completes, logs status code and elapsed ms at `Information` / `Warning` (4xx) / `Error` (5xx) |
+
+Every response carries an `X-Correlation-Id` header (set via `OnStarting` callback) for distributed tracing.
+
+**Exception → status code mapping:**
+
+| Exception | Status |
+|-----------|--------|
+| `UnauthorizedAccessException` | 403 Forbidden |
+| `ArgumentException` | 400 Bad Request |
+| `KeyNotFoundException` | 404 Not Found |
+| `OperationCanceledException` | 499 Client Closed Request |
+| anything else | 500 Internal Server Error |
+
+**Pipeline order** (matters — `UseRouting` must precede the middleware so `GetEndpoint()` is populated):
+
+```
+ExceptionHandlingMiddleware (outer try/catch)
+  → UseSwagger / UseSwaggerUI
+  → UseCors
+  → UseRouting          ← populates endpoint metadata
+  → RequestPipelineMiddleware  ← logging · endpoint · JWT · error handling
+  → UseAuthentication   ← full JWT crypto validation
+  → UseAuthorization
+  → MapControllers / MapMcp
+```
 
 ---
 

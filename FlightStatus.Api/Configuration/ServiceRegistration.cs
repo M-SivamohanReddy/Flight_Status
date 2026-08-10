@@ -37,8 +37,8 @@ public static class ServiceRegistration
         services.AddRepositories();
         services.AddApplicationServices();
 
-        services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
+        services.AddTransient<RequestPipelineMiddleware>();
         services.AddMemoryCache();
 
         // MCP server: tools inject services directly — no HTTP round-trip needed

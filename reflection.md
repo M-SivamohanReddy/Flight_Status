@@ -18,7 +18,9 @@ Beyond the specified scope, the following was added:
 | Floating chatbot widget (natural language) | In-app search without navigating to a form |
 | Docker Compose | One-command startup for reviewers without a .NET or Node environment |
 | Layered architecture — Controllers / Services / Repositories with interfaces | `IController`, `IAuthService`, `IFlightStatusQueryService`, `IBookingService`, `IFlightCatalogService`; auto-discovered endpoint registration via `MapControllers()` |
-| GlobalExceptionHandler | Single reusable try-catch via `IExceptionHandler`; controllers log requests and let exceptions propagate cleanly |
+| CQRS via MediatR | Controllers dispatch to `IRequest<T>` handlers; read-side Queries are side-effect-free, write-side Commands mutate state — zero business logic in controllers |
+| Custom middleware (`RequestPipelineMiddleware`) | Single `IMiddleware` class covering request/response logging, endpoint existence check (404 guard), JWT structural validation (401 guard), and global exception handling with exception-type→status-code mapping |
+| `X-Correlation-Id` response header | Injected via `OnStarting` callback on every response; enables distributed tracing across logs |
 | Angular feature modules (lazy loading) | `features/admin` and `features/user` are lazy-loaded chunks; shared components in `shared/components/` |
 
 ---
@@ -27,7 +29,7 @@ Beyond the specified scope, the following was added:
 
 ### Testing
 
-The 21 unit tests cover StatusNormaliser and FlightStatusQueryService. Missing:
+38 unit tests cover StatusNormaliser, FlightStatusQueryService, and RequestPipelineMiddleware. Missing:
 
 - **Integration tests** using `WebApplicationFactory<Program>` — test the full HTTP pipeline (auth middleware, validation, endpoint routing, JSON serialisation) with a real in-memory database.
 - **E2E tests** using Playwright — cover the login/logout flow, admin vs user role separation, and the chatbot widget's happy path.
@@ -38,7 +40,7 @@ The 21 unit tests cover StatusNormaliser and FlightStatusQueryService. Missing:
 - **Retry + circuit-breaker on providers** using `Microsoft.Extensions.Http.Resilience` — the current `FetchSafeAsync` catch-all silently absorbs failures; a circuit-breaker would fail fast after repeated errors rather than always waiting for a provider timeout.
 - **Background status pre-fetch** — when a user opens their dashboard, fire concurrent status requests for all booked flights and warm the cache, so "Check Status" is instant.
 - **Health checks endpoint** (`/healthz`) reporting DB connectivity and cache state — essential for container orchestration readiness/liveness probes.
-- **Structured logging with correlation IDs** — Serilog + OpenTelemetry would let you trace a single `/flights/status` call through both provider queries with one trace ID.
+- **Structured logging with Serilog + OpenTelemetry** — The `RequestPipelineMiddleware` already emits `X-Correlation-Id` and structured log entries; enriching these with OpenTelemetry spans would let you trace a single `/flights/status` call through both provider queries with one trace ID.
 
 ### Security / Operability
 
