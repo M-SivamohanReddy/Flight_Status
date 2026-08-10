@@ -8,10 +8,12 @@ using FlightStatus.Api.Infrastructure;
 using FlightStatus.Api.Providers;
 using FlightStatus.Api.Services;
 using FlightStatus.Api.Services.Interfaces;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using ModelContextProtocol.AspNetCore;
 
 namespace FlightStatus.Api.Configuration;
@@ -43,7 +45,37 @@ public static class ServiceRegistration
         services.AddMcpServer()
                 .WithHttpTransport()
                 .WithTools<FlightMcpTools>();
-        services.AddOpenApi();
+
+        services.AddSwaggerGen(opts =>
+        {
+            opts.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title       = "SkyRoute Flight Status API",
+                Version     = "v1",
+                Description = "Flight catalog, real-time status, bookings and admin endpoints."
+            });
+
+            // Enables the Authorize button in Swagger UI
+            var bearerScheme = new OpenApiSecurityScheme
+            {
+                Name         = "Authorization",
+                Type         = SecuritySchemeType.Http,
+                Scheme       = "bearer",
+                BearerFormat = "JWT",
+                In           = ParameterLocation.Header,
+                Description  = "Paste the JWT token returned by POST /auth/login"
+            };
+            opts.AddSecurityDefinition("Bearer", bearerScheme);
+            opts.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                [
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                    }
+                ] = []
+            });
+        });
         services.AddCors(opts =>
             opts.AddDefaultPolicy(p =>
                 p.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")

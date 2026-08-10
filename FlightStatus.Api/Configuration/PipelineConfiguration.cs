@@ -8,7 +8,14 @@ public static class PipelineConfiguration
         app.UseExceptionHandler();
 
         if (app.Environment.IsDevelopment())
-            app.MapOpenApi();
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(opts =>
+            {
+                opts.SwaggerEndpoint("/swagger/v1/swagger.json", "SkyRoute v1");
+                opts.RoutePrefix = "swagger"; // UI at /swagger
+            });
+        }
 
         app.UseCors();
         app.UseAuthentication();
